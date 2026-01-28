@@ -17,6 +17,14 @@ class HydrationBenchmark extends TestCase
 {
     private array $benchmarkResults = [];
 
+    /**
+     * Maximum entries to benchmark. Tests run at each order of magnitude.
+     * Example: 100000 runs benchmarks for 100, 1000, 10000, 100000
+     *
+     * Static so both the data provider and instance methods can access it.
+     */
+    private static int $maxEntries = 100000;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -25,9 +33,8 @@ class HydrationBenchmark extends TestCase
 
     protected function seedBenchmarkData(): void
     {
-        // Seed 10000 users for benchmarking
         $users = [];
-        for ($i = 1; $i <= 10000; $i++) {
+        for ($i = 1; $i <= self::$maxEntries; $i++) {
             $users[] = [
                 'id' => $i,
                 'name' => "User {$i}",
@@ -44,36 +51,42 @@ class HydrationBenchmark extends TestCase
                 $users = [];
             }
         }
+
+        // Insert any remaining users
+        if (count($users) > 0) {
+            $this->app['db']->table('users')->insert($users);
+        }
     }
 
-    public function test_benchmark_hydration_100(): void
+    /**
+     * Generate test counts at each order of magnitude up to $maxEntries.
+     *
+     * @return array<string, array{int}>
+     */
+    public static function hydrationCountProvider(): array
     {
-        $this->runHydrationBenchmark(100);
-        $this->assertTrue(true); // Placeholder assertion
+        $counts = [];
+
+        for ($magnitude = 100; $magnitude <= self::$maxEntries; $magnitude *= 10) {
+            $counts[number_format($magnitude) . ' rows'] = [$magnitude];
+        }
+
+        return $counts;
     }
 
-    public function test_benchmark_hydration_1000(): void
+    /**
+     * @dataProvider hydrationCountProvider
+     */
+    public function test_benchmark_hydration(int $count): void
     {
-        $this->runHydrationBenchmark(1000);
-        $this->assertTrue(true);
-    }
-
-    public function test_benchmark_hydration_10000(): void
-    {
-        $this->runHydrationBenchmark(10000);
-        $this->assertTrue(true);
-    }
-
-    public function test_benchmark_hydration_100000(): void
-    {
-        $this->runHydrationBenchmark(100000);
+        $this->runHydrationBenchmark($count);
         $this->assertTrue(true);
     }
 
 
     public function test_benchmark_memory_usage(): void
     {
-        $count = 100000;
+        $count = self::$maxEntries;
 
         // Benchmark Eloquent memory
         gc_collect_cycles();
@@ -151,6 +164,14 @@ class HydrationBenchmark extends TestCase
     private function runHydrationBenchmark(int $count): void
     {
         $iterations = 5;
+
+        // Verify sufficient data exists
+        $availableRows = $this->app['db']->table('users')->count();
+        $this->assertGreaterThanOrEqual(
+            $count,
+            $availableRows,
+            "Benchmark requires {$count} rows but only {$availableRows} seeded"
+        );
 
         // Warm up
         BenchmarkEloquentUser::query()->limit(10)->get();
