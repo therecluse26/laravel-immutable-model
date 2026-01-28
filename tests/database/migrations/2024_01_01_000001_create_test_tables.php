@@ -72,10 +72,74 @@ return new class extends Migration
             $table->string('theme')->nullable();
             $table->boolean('notifications_enabled')->default(true);
         });
+
+        // =========================================================================
+        // Tables for testing new relationship types
+        // =========================================================================
+
+        // Pivot table for BelongsToMany (posts <-> tags)
+        Schema::create('post_tag', function (Blueprint $table) {
+            $table->foreignId('post_id')->constrained()->onDelete('cascade');
+            $table->foreignId('tag_id')->constrained()->onDelete('cascade');
+            $table->integer('order')->nullable();
+            $table->timestamps();
+            $table->primary(['post_id', 'tag_id']);
+        });
+
+        // Polymorphic pivot table for MorphToMany (taggables)
+        Schema::create('taggables', function (Blueprint $table) {
+            $table->foreignId('tag_id')->constrained()->onDelete('cascade');
+            $table->morphs('taggable');
+            $table->timestamps();
+        });
+
+        // Images table for MorphOne/MorphMany testing
+        Schema::create('images', function (Blueprint $table) {
+            $table->id();
+            $table->nullableMorphs('imageable');
+            $table->string('path');
+            $table->boolean('is_featured')->default(false);
+            $table->timestamps();
+        });
+
+        // Countries table for HasManyThrough testing
+        Schema::create('countries', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->timestamps();
+        });
+
+        // Suppliers table (intermediate for Country -> Supplier -> User)
+        Schema::create('suppliers', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('country_id')->constrained()->onDelete('cascade');
+            $table->string('name');
+            $table->timestamps();
+            $table->softDeletes();
+        });
+
+        // Add supplier_id to users for HasManyThrough testing
+        Schema::table('users', function (Blueprint $table) {
+            $table->foreignId('supplier_id')->nullable()->after('email_verified_at')->constrained()->onDelete('set null');
+        });
     }
 
     public function down(): void
     {
+        // Drop supplier_id from users first
+        Schema::table('users', function (Blueprint $table) {
+            $table->dropForeign(['supplier_id']);
+            $table->dropColumn('supplier_id');
+        });
+
+        // Drop new tables in reverse order
+        Schema::dropIfExists('suppliers');
+        Schema::dropIfExists('countries');
+        Schema::dropIfExists('images');
+        Schema::dropIfExists('taggables');
+        Schema::dropIfExists('post_tag');
+
+        // Original tables
         Schema::dropIfExists('user_settings');
         Schema::dropIfExists('post_meta');
         Schema::dropIfExists('tags');

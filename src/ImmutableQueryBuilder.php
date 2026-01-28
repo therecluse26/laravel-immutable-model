@@ -7,8 +7,15 @@ namespace Brighten\ImmutableModel;
 use Brighten\ImmutableModel\Exceptions\ImmutableModelConfigurationException;
 use Brighten\ImmutableModel\Exceptions\ImmutableModelViolationException;
 use Brighten\ImmutableModel\Relations\ImmutableBelongsTo;
+use Brighten\ImmutableModel\Relations\ImmutableBelongsToMany;
 use Brighten\ImmutableModel\Relations\ImmutableHasMany;
+use Brighten\ImmutableModel\Relations\ImmutableHasManyThrough;
 use Brighten\ImmutableModel\Relations\ImmutableHasOne;
+use Brighten\ImmutableModel\Relations\ImmutableHasOneThrough;
+use Brighten\ImmutableModel\Relations\ImmutableMorphMany;
+use Brighten\ImmutableModel\Relations\ImmutableMorphOne;
+use Brighten\ImmutableModel\Relations\ImmutableMorphTo;
+use Brighten\ImmutableModel\Relations\ImmutableMorphToMany;
 use Brighten\ImmutableModel\Scopes\ImmutableModelScope;
 use Closure;
 use Illuminate\Database\Eloquent\Builder;
@@ -369,7 +376,14 @@ class ImmutableQueryBuilder extends Builder
         // Match results back to models
         if ($relation instanceof ImmutableBelongsTo ||
             $relation instanceof ImmutableHasOne ||
-            $relation instanceof ImmutableHasMany) {
+            $relation instanceof ImmutableHasMany ||
+            $relation instanceof ImmutableBelongsToMany ||
+            $relation instanceof ImmutableHasOneThrough ||
+            $relation instanceof ImmutableHasManyThrough ||
+            $relation instanceof ImmutableMorphOne ||
+            $relation instanceof ImmutableMorphMany ||
+            $relation instanceof ImmutableMorphTo ||
+            $relation instanceof ImmutableMorphToMany) {
             $relation->eagerLoadOnCollection($models, $name, $constraints);
         }
     }

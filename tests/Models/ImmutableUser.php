@@ -6,6 +6,7 @@ namespace Brighten\ImmutableModel\Tests\Models;
 
 use Brighten\ImmutableModel\ImmutableCollection;
 use Brighten\ImmutableModel\ImmutableModel;
+use Brighten\ImmutableModel\Relations\ImmutableBelongsTo;
 use Brighten\ImmutableModel\Relations\ImmutableHasMany;
 use Brighten\ImmutableModel\Relations\ImmutableHasOne;
 use Brighten\ImmutableModel\Tests\Models\Mutable\UserSettings;
@@ -36,6 +37,7 @@ class ImmutableUser extends ImmutableModel
     protected array $casts = [
         'settings' => 'array',
         'email_verified_at' => 'datetime',
+        'supplier_id' => 'int',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
@@ -84,5 +86,13 @@ class ImmutableUser extends ImmutableModel
     public function mutableSettings(): ImmutableHasOne
     {
         return $this->hasOne(UserSettings::class, 'user_id', 'id');
+    }
+
+    /**
+     * Get the user's supplier (for HasManyThrough testing).
+     */
+    public function supplier(): ImmutableBelongsTo
+    {
+        return $this->belongsTo(ImmutableSupplier::class, 'supplier_id', 'id');
     }
 }

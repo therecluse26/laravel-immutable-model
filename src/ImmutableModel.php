@@ -9,8 +9,15 @@ use Brighten\ImmutableModel\Casts\CastManager;
 use Brighten\ImmutableModel\Exceptions\ImmutableModelConfigurationException;
 use Brighten\ImmutableModel\Exceptions\ImmutableModelViolationException;
 use Brighten\ImmutableModel\Relations\ImmutableBelongsTo;
+use Brighten\ImmutableModel\Relations\ImmutableBelongsToMany;
 use Brighten\ImmutableModel\Relations\ImmutableHasMany;
+use Brighten\ImmutableModel\Relations\ImmutableHasManyThrough;
 use Brighten\ImmutableModel\Relations\ImmutableHasOne;
+use Brighten\ImmutableModel\Relations\ImmutableHasOneThrough;
+use Brighten\ImmutableModel\Relations\ImmutableMorphMany;
+use Brighten\ImmutableModel\Relations\ImmutableMorphOne;
+use Brighten\ImmutableModel\Relations\ImmutableMorphTo;
+use Brighten\ImmutableModel\Relations\ImmutableMorphToMany;
 use Brighten\ImmutableModel\Scopes\ImmutableModelScope;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Contracts\Support\Jsonable;
@@ -255,7 +262,15 @@ abstract class ImmutableModel implements ArrayAccess, JsonSerializable, Arrayabl
      */
     public function getForeignKey(): string
     {
-        return Str::snake(class_basename($this)) . '_' . ($this->primaryKey ?? 'id');
+        $basename = class_basename($this);
+
+        // Strip "Immutable" prefix if present to match Eloquent conventions
+        // e.g., ImmutableTag -> tag_id, not immutable_tag_id
+        if (str_starts_with($basename, 'Immutable')) {
+            $basename = substr($basename, 9); // length of "Immutable"
+        }
+
+        return Str::snake($basename) . '_' . ($this->primaryKey ?? 'id');
     }
 
     /**
@@ -622,7 +637,14 @@ abstract class ImmutableModel implements ArrayAccess, JsonSerializable, Arrayabl
 
         if ($relation instanceof ImmutableBelongsTo ||
             $relation instanceof ImmutableHasOne ||
-            $relation instanceof ImmutableHasMany) {
+            $relation instanceof ImmutableHasMany ||
+            $relation instanceof ImmutableBelongsToMany ||
+            $relation instanceof ImmutableHasOneThrough ||
+            $relation instanceof ImmutableHasManyThrough ||
+            $relation instanceof ImmutableMorphOne ||
+            $relation instanceof ImmutableMorphMany ||
+            $relation instanceof ImmutableMorphTo ||
+            $relation instanceof ImmutableMorphToMany) {
             $result = $relation->getResults();
             $this->setRelationInternal($key, $result);
 
@@ -675,6 +697,103 @@ abstract class ImmutableModel implements ArrayAccess, JsonSerializable, Arrayabl
 
         return $this->castManager;
     }
+
+    // =========================================================================
+    // Relationship Helper Methods
+    // =========================================================================
+
+    /**
+     * Get the joining table name for a many-to-many relation.
+     *
+     * Follows Eloquent's convention: snake_cased model names sorted alphabetically.
+     * e.g., Post + Tag = "post_tag" (not "tag_post")
+     *
+     * @param  class-string  $related
+     */
+    public function joiningTable(string $related, mixed $instance = null): string
+    {
+        $segments = [
+            $instance instanceof self
+                ? $instance->joiningTableSegment()
+                : Str::snake(class_basename($related)),
+            $this->joiningTableSegment(),
+        ];
+
+        sort($segments);
+
+        return strtolower(implode('_', $segments));
+    }
+
+    /**
+     * Get this model's half of the intermediate table name for belongsToMany relationships.
+     */
+    public function joiningTableSegment(): string
+    {
+        $basename = class_basename($this);
+
+        // Strip "Immutable" prefix if present to match Eloquent conventions
+        if (str_starts_with($basename, 'Immutable')) {
+            $basename = substr($basename, 9);
+        }
+
+        return Str::snake($basename);
+    }
+
+    /**
+     * Get the polymorphic relationship columns.
+     *
+     * @return array{0: string, 1: string} [type column, id column]
+     */
+    protected function getMorphs(string $name, ?string $type, ?string $id): array
+    {
+        return [$type ?: $name . '_type', $id ?: $name . '_id'];
+    }
+
+    /**
+     * Get the class name for polymorphic relations.
+     *
+     * Uses Laravel's morph map if available, otherwise returns FQCN.
+     */
+    public function getMorphClass(): string
+    {
+        $morphMap = \Illuminate\Database\Eloquent\Relations\Relation::morphMap();
+
+        if (! empty($morphMap) && in_array(static::class, $morphMap, true)) {
+            return array_search(static::class, $morphMap, true);
+        }
+
+        return static::class;
+    }
+
+    /**
+     * Guess the "belongs to" relationship name.
+     */
+    protected function guessBelongsToRelation(): string
+    {
+        [$one, $two, $caller] = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 3);
+
+        return $caller['function'];
+    }
+
+    /**
+     * Get the relationship name of the belongsToMany relationship.
+     */
+    protected function guessBelongsToManyRelation(): ?string
+    {
+        $caller = \Illuminate\Support\Arr::first(
+            debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS),
+            fn ($trace) => ! in_array(
+                $trace['function'],
+                ['belongsToMany', 'morphToMany', 'morphedByMany', 'guessBelongsToManyRelation']
+            )
+        );
+
+        return $caller['function'] ?? null;
+    }
+
+    // =========================================================================
+    // Relationship Factory Methods
+    // =========================================================================
 
     /**
      * Define a belongs-to relationship.
@@ -755,6 +874,272 @@ abstract class ImmutableModel implements ArrayAccess, JsonSerializable, Arrayabl
             $foreignKey,
             $localKey,
             $relation
+        );
+    }
+
+    /**
+     * Define a many-to-many relationship.
+     *
+     * @param  class-string<ImmutableModel|\Illuminate\Database\Eloquent\Model>  $related
+     */
+    protected function belongsToMany(
+        string $related,
+        ?string $table = null,
+        ?string $foreignPivotKey = null,
+        ?string $relatedPivotKey = null,
+        ?string $parentKey = null,
+        ?string $relatedKey = null
+    ): ImmutableBelongsToMany {
+        $relation = $this->guessBelongsToManyRelation();
+
+        // Create instance to get default keys
+        $instance = new $related();
+
+        // Default pivot keys
+        $foreignPivotKey ??= $this->getForeignKey();
+        $relatedPivotKey ??= $instance->getForeignKey();
+
+        // Default table: alphabetical snake_case of model names
+        $table ??= $this->joiningTable($related, $instance);
+
+        // Default model keys
+        $parentKey ??= $this->getKeyName() ?? 'id';
+        $relatedKey ??= $instance->getKeyName() ?? 'id';
+
+        return new ImmutableBelongsToMany(
+            $this,
+            $related,
+            $table,
+            $foreignPivotKey,
+            $relatedPivotKey,
+            $parentKey,
+            $relatedKey,
+            $relation ?? ''
+        );
+    }
+
+    /**
+     * Define a has-one-through relationship.
+     *
+     * @param  class-string<ImmutableModel|\Illuminate\Database\Eloquent\Model>  $related
+     * @param  class-string<ImmutableModel|\Illuminate\Database\Eloquent\Model>  $through
+     */
+    protected function hasOneThrough(
+        string $related,
+        string $through,
+        ?string $firstKey = null,
+        ?string $secondKey = null,
+        ?string $localKey = null,
+        ?string $secondLocalKey = null
+    ): ImmutableHasOneThrough {
+        $relation = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1]['function'];
+
+        $throughInstance = new $through();
+
+        // Default keys following Eloquent's conventions
+        $firstKey ??= $this->getForeignKey();
+        $secondKey ??= $throughInstance->getForeignKey();
+        $localKey ??= $this->getKeyName() ?? 'id';
+        $secondLocalKey ??= $throughInstance->getKeyName() ?? 'id';
+
+        return new ImmutableHasOneThrough(
+            $this,
+            $through,
+            $related,
+            $firstKey,
+            $secondKey,
+            $localKey,
+            $secondLocalKey,
+            $relation
+        );
+    }
+
+    /**
+     * Define a has-many-through relationship.
+     *
+     * @param  class-string<ImmutableModel|\Illuminate\Database\Eloquent\Model>  $related
+     * @param  class-string<ImmutableModel|\Illuminate\Database\Eloquent\Model>  $through
+     */
+    protected function hasManyThrough(
+        string $related,
+        string $through,
+        ?string $firstKey = null,
+        ?string $secondKey = null,
+        ?string $localKey = null,
+        ?string $secondLocalKey = null
+    ): ImmutableHasManyThrough {
+        $relation = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1]['function'];
+
+        $throughInstance = new $through();
+
+        // Default keys following Eloquent's conventions
+        $firstKey ??= $this->getForeignKey();
+        $secondKey ??= $throughInstance->getForeignKey();
+        $localKey ??= $this->getKeyName() ?? 'id';
+        $secondLocalKey ??= $throughInstance->getKeyName() ?? 'id';
+
+        return new ImmutableHasManyThrough(
+            $this,
+            $through,
+            $related,
+            $firstKey,
+            $secondKey,
+            $localKey,
+            $secondLocalKey,
+            $relation
+        );
+    }
+
+    /**
+     * Define a polymorphic one-to-one relationship.
+     *
+     * @param  class-string<ImmutableModel|\Illuminate\Database\Eloquent\Model>  $related
+     */
+    protected function morphOne(
+        string $related,
+        string $name,
+        ?string $type = null,
+        ?string $id = null,
+        ?string $localKey = null
+    ): ImmutableMorphOne {
+        $relation = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1]['function'];
+
+        [$type, $id] = $this->getMorphs($name, $type, $id);
+        $localKey ??= $this->getKeyName() ?? 'id';
+
+        return new ImmutableMorphOne(
+            $this,
+            $related,
+            $type,
+            $id,
+            $localKey,
+            $relation
+        );
+    }
+
+    /**
+     * Define a polymorphic one-to-many relationship.
+     *
+     * @param  class-string<ImmutableModel|\Illuminate\Database\Eloquent\Model>  $related
+     */
+    protected function morphMany(
+        string $related,
+        string $name,
+        ?string $type = null,
+        ?string $id = null,
+        ?string $localKey = null
+    ): ImmutableMorphMany {
+        $relation = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1]['function'];
+
+        [$type, $id] = $this->getMorphs($name, $type, $id);
+        $localKey ??= $this->getKeyName() ?? 'id';
+
+        return new ImmutableMorphMany(
+            $this,
+            $related,
+            $type,
+            $id,
+            $localKey,
+            $relation
+        );
+    }
+
+    /**
+     * Define a polymorphic, inverse one-to-one or many relationship.
+     */
+    protected function morphTo(
+        ?string $name = null,
+        ?string $type = null,
+        ?string $id = null,
+        ?string $ownerKey = null
+    ): ImmutableMorphTo {
+        // Get the name from the calling method if not provided
+        $name ??= $this->guessBelongsToRelation();
+
+        [$type, $id] = $this->getMorphs(Str::snake($name), $type, $id);
+
+        return new ImmutableMorphTo(
+            $this,
+            $id,
+            $ownerKey,
+            $type,
+            $name
+        );
+    }
+
+    /**
+     * Define a polymorphic many-to-many relationship.
+     *
+     * @param  class-string<ImmutableModel|\Illuminate\Database\Eloquent\Model>  $related
+     */
+    protected function morphToMany(
+        string $related,
+        string $name,
+        ?string $table = null,
+        ?string $foreignPivotKey = null,
+        ?string $relatedPivotKey = null,
+        ?string $parentKey = null,
+        ?string $relatedKey = null,
+        bool $inverse = false
+    ): ImmutableMorphToMany {
+        $relation = $this->guessBelongsToManyRelation();
+
+        $instance = new $related();
+
+        // Default keys
+        $foreignPivotKey ??= $name . '_id';
+        $relatedPivotKey ??= $instance->getForeignKey();
+        $parentKey ??= $this->getKeyName() ?? 'id';
+        $relatedKey ??= $instance->getKeyName() ?? 'id';
+
+        // Default table: pluralized morph name (e.g., 'taggable' -> 'taggables')
+        if ($table === null) {
+            $words = preg_split('/(_)/u', $name, -1, PREG_SPLIT_DELIM_CAPTURE);
+            $lastWord = array_pop($words);
+            $table = implode('', $words) . Str::plural($lastWord);
+        }
+
+        return new ImmutableMorphToMany(
+            $this,
+            $related,
+            $name,
+            $table,
+            $foreignPivotKey,
+            $relatedPivotKey,
+            $parentKey,
+            $relatedKey,
+            $relation ?? '',
+            $inverse
+        );
+    }
+
+    /**
+     * Define a polymorphic, inverse many-to-many relationship.
+     *
+     * @param  class-string<ImmutableModel|\Illuminate\Database\Eloquent\Model>  $related
+     */
+    protected function morphedByMany(
+        string $related,
+        string $name,
+        ?string $table = null,
+        ?string $foreignPivotKey = null,
+        ?string $relatedPivotKey = null,
+        ?string $parentKey = null,
+        ?string $relatedKey = null
+    ): ImmutableMorphToMany {
+        // For inverse, swap the pivot key defaults
+        $foreignPivotKey ??= $this->getForeignKey();
+        $relatedPivotKey ??= $name . '_id';
+
+        return $this->morphToMany(
+            $related,
+            $name,
+            $table,
+            $foreignPivotKey,
+            $relatedPivotKey,
+            $parentKey,
+            $relatedKey,
+            inverse: true
         );
     }
 
