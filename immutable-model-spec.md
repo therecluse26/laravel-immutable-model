@@ -298,9 +298,11 @@ Full pagination support:
 ### Transformation Type Preservation
 - Transformations that preserve ImmutableModel items return `ImmutableCollection`:
   - `filter()`, `reject()`, `where()`, `whereIn()`, `take()`, `skip()`, `unique()`, `sortBy()`, `values()`
-- Transformations that may change item types return base `Collection`:
-  - `map()` (returns ImmutableCollection only if all results are ImmutableModels of same type)
-  - `pluck()`, `keys()`
+- Transformations that may change item types ALWAYS return base `Collection`:
+  - `map()`, `pluck()`, `keys()`, `flatMap()`, `groupBy()`
+
+> Rationale: Runtime type inference for map() adds complexity without significant benefit.
+> Users can wrap results manually if needed.
 
 ### Collection Hydration
 
@@ -458,6 +460,25 @@ Document clearly:
 - Explicit non-goals
 - Differences from Eloquent
 - Performance characteristics and limitations
+
+### Documentation Deliverables
+- `README.md` at package root with:
+  - Installation instructions
+  - Quick start example
+  - Full API reference
+  - Comparison table vs Eloquent
+- Inline DocBlocks on all public methods
+- No separate documentation site required
+
+---
+
+## Package Configuration
+
+### composer.json
+- Name: `brighten/immutable-model`
+- Require: `php ^8.2`, `illuminate/database ^11.0`, `illuminate/support ^11.0`
+- Autoload PSR-4: `Brighten\\ImmutableModel\\` → `src/`
+- No Laravel auto-discovery required (no ServiceProvider)
 
 ---
 
