@@ -1,5 +1,5 @@
 # Project: ImmutableModel
-**An Eloquent-compatible, read-only model kernel for Laravel 11**
+**An Eloquent-compatible, read-only model kernel for Laravel 11+**
 
 **Namespace**: `Brighten\ImmutableModel`
 
@@ -26,7 +26,7 @@ This package exists to:
 - The implementation MUST NOT extend `Illuminate\Database\Eloquent\Model`
 - Eloquent internals may be reused compositionally where beneficial
 - Some inert Eloquent machinery is acceptable if it is provably unreachable
-- Where behavior is described as "identical to Eloquent", Laravel 11.x Eloquent Model behavior is the reference, except where explicitly forbidden.
+- Where behavior is described as "identical to Eloquent", Laravel 11+ Eloquent Model behavior is the reference, except where explicitly forbidden.
 
 ---
 
@@ -484,7 +484,7 @@ Document clearly:
 
 ## Laravel & PHP Compatibility
 - PHP ≥ 8.2
-- Laravel 11.x only
+- Laravel 11+
 - Allowed Eloquent internals:
   - `Illuminate\Database\Eloquent\Relations\*`
   - `HasAttributes` (read-only subset)

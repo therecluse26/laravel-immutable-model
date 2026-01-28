@@ -4,7 +4,7 @@
 
 **Package:** `brighten/immutable-model`
 **Namespace:** `Brighten\ImmutableModel`
-**Purpose:** Read-only, immutable Eloquent-compatible models for Laravel 11
+**Purpose:** Read-only, immutable Eloquent-compatible models for Laravel 11+
 
 This package enforces architectural read/write boundaries by providing models that:
 - Have Eloquent-identical read semantics

@@ -1,6 +1,6 @@
 # ImmutableModel
 
-**An Eloquent-compatible, read-only model kernel for Laravel 11**
+**An Eloquent-compatible, read-only model kernel for Laravel 11+**
 
 ImmutableModel provides first-class, enforceable immutable read-only models for Laravel applications. It's perfect for SQL views, read-only tables, denormalized projections, and as a CQRS read-side primitive.
 
@@ -22,7 +22,7 @@ composer require brighten/immutable-model
 ## Requirements
 
 - PHP 8.2+
-- Laravel 11.x
+- Laravel 11+
 
 ## Quick Start
 
