@@ -1,0 +1,21 @@
+# Dependencies
+/vendor/
+composer.lock
+
+# PHPUnit
+/.phpunit.cache/
+.phpunit.result.cache
+/coverage/
+
+# PHP CS Fixer
+.php-cs-fixer.cache
+
+# IDE/Editors
+/.idea/
+/.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# OS
+.DS_Store
+Thumbs.db
