@@ -8,8 +8,8 @@ ImmutableModel provides first-class, enforceable immutable read-only models for 
 
 - **Enforce architectural boundaries**: Prevent accidental writes at the model level
 - **Eliminate mutation bugs**: Any write attempt throws immediately - no silent failures
-- **Improved performance**: 68-90% faster hydration than Eloquent
-- **Lower memory footprint**: No dirty tracking or original attribute storage
+- **Improved performance**: 41-72% faster hydration, 95-96% faster eager loading
+- **Lower memory footprint**: 41% less memory (~1 KB vs ~1.65 KB per model)
 - **Familiar API**: Eloquent-compatible read semantics for easy adoption
 - **Type safety**: Strict immutability enforced at runtime
 
@@ -304,12 +304,31 @@ $users = User::fromRows([
 
 Benchmarks show ImmutableModel is significantly faster for read operations:
 
-| Operation | Eloquent | ImmutableModel | Improvement |
-|-----------|----------|----------------|-------------|
-| Hydrate 100 rows | 0.33ms | 0.10ms | -70% |
-| Hydrate 1000 rows | 2.82ms | 0.77ms | -73% |
-| Hydrate 10000 rows | 39.10ms | 12.49ms | -68% |
-| Eager loading | 6.64ms | 0.65ms | -90% |
+### Hydration Speed
+
+| Rows | Eloquent | ImmutableModel | Improvement |
+|------|----------|----------------|-------------|
+| 100 | 0.29ms | 0.09ms | -70% |
+| 1,000 | 2.79ms | 0.78ms | -72% |
+| 10,000 | 37.17ms | 11.44ms | -69% |
+| 100,000 | 458.90ms | 270.82ms | -41% |
+
+### Memory Usage
+
+| Rows | Eloquent | ImmutableModel | Per Model (E) | Per Model (I) | Savings |
+|------|----------|----------------|---------------|---------------|---------|
+| 100 | 166 KB | 97 KB | 1.66 KB | 998 B | 41% |
+| 1,000 | 1.61 MB | 973 KB | 1.65 KB | 996 B | 41% |
+| 10,000 | 16.2 MB | 9.56 MB | 1.66 KB | 1003 B | 41% |
+| 100,000 | 161.5 MB | 95.1 MB | 1.65 KB | 997 B | 41% |
+
+### Eager Loading (10 posts per user)
+
+| Users | Total Models | Eloquent | ImmutableModel | Improvement |
+|-------|--------------|----------|----------------|-------------|
+| 10 | 110 | 1.94ms | 0.09ms | -95% |
+| 100 | 1,100 | 7.67ms | 0.28ms | -96% |
+| 1,000 | 11,000 | 69.36ms | 2.45ms | -96% |
 
 ## Use Cases
 
