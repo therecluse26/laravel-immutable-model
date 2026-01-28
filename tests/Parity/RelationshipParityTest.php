@@ -378,6 +378,67 @@ class RelationshipParityTest extends ParityTestCase
         $this->assertTrue($immutableCountry->users->isEmpty());
     }
 
+    public function test_has_many_through_respects_soft_deletes_parity(): void
+    {
+        // Soft delete a supplier
+        $this->app['db']->table('suppliers')->where('id', 1)->update(['deleted_at' => now()]);
+
+        $eloquentCountry = EloquentCountry::find(1);
+        $immutableCountry = ImmutableCountry::find(1);
+
+        // Both should exclude users from deleted supplier
+        $this->assertEquals(
+            $eloquentCountry->users->count(),
+            $immutableCountry->users->count(),
+            'User count with soft deleted supplier differs'
+        );
+    }
+
+    public function test_has_many_through_with_trashed_parents_parity(): void
+    {
+        // Soft delete a supplier
+        $this->app['db']->table('suppliers')->where('id', 1)->update(['deleted_at' => now()]);
+
+        // Create anonymous classes that use withTrashedParents
+        $eloquentCountry = new class extends EloquentCountry {
+            public function usersWithTrashed()
+            {
+                return $this->hasManyThrough(
+                    \Brighten\ImmutableModel\Tests\Models\Eloquent\EloquentUser::class,
+                    EloquentSupplier::class,
+                    'country_id',
+                    'supplier_id',
+                    'id',
+                    'id'
+                )->withTrashedParents();
+            }
+        };
+
+        $immutableCountry = new class extends ImmutableCountry {
+            public function usersWithTrashed()
+            {
+                return $this->hasManyThrough(
+                    ImmutableUser::class,
+                    ImmutableSupplier::class,
+                    'country_id',
+                    'supplier_id',
+                    'id',
+                    'id'
+                )->withTrashedParents();
+            }
+        };
+
+        $eloquentCountry = $eloquentCountry::find(1);
+        $immutableCountry = $immutableCountry::find(1);
+
+        // Both should include users from deleted supplier
+        $this->assertEquals(
+            $eloquentCountry->usersWithTrashed->count(),
+            $immutableCountry->usersWithTrashed->count(),
+            'User count with withTrashedParents differs'
+        );
+    }
+
     // =========================================================================
     // HAS ONE THROUGH
     // =========================================================================
@@ -404,6 +465,72 @@ class RelationshipParityTest extends ParityTestCase
 
         $this->assertNull($eloquentCountry->firstUser);
         $this->assertNull($immutableCountry->firstUser);
+    }
+
+    public function test_has_one_through_respects_soft_deletes_parity(): void
+    {
+        // Soft delete the first supplier
+        $this->app['db']->table('suppliers')->where('id', 1)->update(['deleted_at' => now()]);
+
+        $eloquentCountry = EloquentCountry::find(1);
+        $immutableCountry = ImmutableCountry::find(1);
+
+        // Both should skip the deleted supplier and get user from non-deleted one
+        // or return null if no non-deleted suppliers have users
+        $eloquentUser = $eloquentCountry->firstUser;
+        $immutableUser = $immutableCountry->firstUser;
+
+        if ($eloquentUser === null) {
+            $this->assertNull($immutableUser);
+        } else {
+            $this->assertEquals($eloquentUser->id, $immutableUser->id);
+        }
+    }
+
+    public function test_has_one_through_with_trashed_parents_parity(): void
+    {
+        // Soft delete the first supplier
+        $this->app['db']->table('suppliers')->where('id', 1)->update(['deleted_at' => now()]);
+
+        // Create anonymous classes that use withTrashedParents
+        $eloquentCountry = new class extends EloquentCountry {
+            public function firstUserWithTrashed()
+            {
+                return $this->hasOneThrough(
+                    \Brighten\ImmutableModel\Tests\Models\Eloquent\EloquentUser::class,
+                    EloquentSupplier::class,
+                    'country_id',
+                    'supplier_id',
+                    'id',
+                    'id'
+                )->withTrashedParents();
+            }
+        };
+
+        $immutableCountry = new class extends ImmutableCountry {
+            public function firstUserWithTrashed()
+            {
+                return $this->hasOneThrough(
+                    ImmutableUser::class,
+                    ImmutableSupplier::class,
+                    'country_id',
+                    'supplier_id',
+                    'id',
+                    'id'
+                )->withTrashedParents();
+            }
+        };
+
+        $eloquentCountry = $eloquentCountry::find(1);
+        $immutableCountry = $immutableCountry::find(1);
+
+        // Both should include user from deleted supplier
+        $this->assertNotNull($eloquentCountry->firstUserWithTrashed);
+        $this->assertNotNull($immutableCountry->firstUserWithTrashed);
+        $this->assertEquals(
+            $eloquentCountry->firstUserWithTrashed->id,
+            $immutableCountry->firstUserWithTrashed->id
+        );
     }
 
     // =========================================================================

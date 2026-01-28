@@ -564,6 +564,16 @@ class ImmutableQueryBuilder extends Builder
     }
 
     /**
+     * Get a new query builder instance without relationships.
+     *
+     * Required for nested where closures and cursor pagination to work.
+     */
+    public function newQueryWithoutRelationships(): static
+    {
+        return new static($this->model);
+    }
+
+    /**
      * Get the underlying query builder (for internal use).
      *
      * @internal
@@ -623,5 +633,21 @@ class ImmutableQueryBuilder extends Builder
     public function forceDelete(): never
     {
         throw ImmutableModelViolationException::persistenceAttempt('forceDelete');
+    }
+
+    /**
+     * @throws ImmutableModelViolationException
+     */
+    public function increment($column, $amount = 1, array $extra = []): never
+    {
+        throw ImmutableModelViolationException::persistenceAttempt('increment');
+    }
+
+    /**
+     * @throws ImmutableModelViolationException
+     */
+    public function decrement($column, $amount = 1, array $extra = []): never
+    {
+        throw ImmutableModelViolationException::persistenceAttempt('decrement');
     }
 }

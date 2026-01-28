@@ -255,6 +255,30 @@ class ImmutabilityTest extends TestCase
         ImmutableUser::query()->truncate();
     }
 
+    public function test_query_increment_throws(): void
+    {
+        $this->expectException(ImmutableModelViolationException::class);
+        $this->expectExceptionMessage('Cannot call [increment]');
+
+        ImmutableUser::query()->where('id', 1)->increment('id');
+    }
+
+    public function test_query_decrement_throws(): void
+    {
+        $this->expectException(ImmutableModelViolationException::class);
+        $this->expectExceptionMessage('Cannot call [decrement]');
+
+        ImmutableUser::query()->where('id', 1)->decrement('id');
+    }
+
+    public function test_query_force_delete_throws(): void
+    {
+        $this->expectException(ImmutableModelViolationException::class);
+        $this->expectExceptionMessage('Cannot call [forceDelete]');
+
+        ImmutableUser::query()->forceDelete();
+    }
+
     // =========================================================================
     // COLLECTION MUTATION TESTS
     // =========================================================================

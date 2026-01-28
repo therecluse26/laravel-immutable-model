@@ -153,6 +153,66 @@ class CastingTest extends TestCase
     }
 
     // =========================================================================
+    // OBJECT CAST
+    // =========================================================================
+
+    public function test_cast_to_object(): void
+    {
+        TestCastableModel::$testCasts = ['value' => 'object'];
+        $model = TestCastableModel::fromRow(['value' => '{"name": "John", "age": 30}']);
+
+        $this->assertInstanceOf(\stdClass::class, $model->value);
+        $this->assertEquals('John', $model->value->name);
+        $this->assertEquals(30, $model->value->age);
+    }
+
+    public function test_cast_to_object_with_nested_data(): void
+    {
+        TestCastableModel::$testCasts = ['value' => 'object'];
+        $model = TestCastableModel::fromRow(['value' => '{"user": {"name": "John", "email": "john@example.com"}}']);
+
+        $this->assertInstanceOf(\stdClass::class, $model->value);
+        $this->assertInstanceOf(\stdClass::class, $model->value->user);
+        $this->assertEquals('John', $model->value->user->name);
+    }
+
+    public function test_cast_to_object_from_array(): void
+    {
+        TestCastableModel::$testCasts = ['value' => 'object'];
+        // When the value is already an array (e.g., from a JSON column that was pre-decoded)
+        $model = TestCastableModel::fromRow(['value' => ['name' => 'John', 'age' => 30]]);
+
+        $this->assertInstanceOf(\stdClass::class, $model->value);
+        $this->assertEquals('John', $model->value->name);
+    }
+
+    // =========================================================================
+    // IMMUTABLE DATE CAST
+    // =========================================================================
+
+    public function test_cast_to_immutable_date(): void
+    {
+        TestCastableModel::$testCasts = ['value' => 'immutable_date'];
+        $model = TestCastableModel::fromRow(['value' => '2024-06-15']);
+
+        $this->assertInstanceOf(CarbonImmutable::class, $model->value);
+        $this->assertEquals('2024-06-15', $model->value->format('Y-m-d'));
+        // Date cast sets time to start of day
+        $this->assertEquals('00:00:00', $model->value->format('H:i:s'));
+    }
+
+    public function test_cast_to_immutable_date_from_datetime(): void
+    {
+        TestCastableModel::$testCasts = ['value' => 'immutable_date'];
+        $model = TestCastableModel::fromRow(['value' => '2024-06-15 14:30:00']);
+
+        $this->assertInstanceOf(CarbonImmutable::class, $model->value);
+        $this->assertEquals('2024-06-15', $model->value->format('Y-m-d'));
+        // Time should be stripped
+        $this->assertEquals('00:00:00', $model->value->format('H:i:s'));
+    }
+
+    // =========================================================================
     // DECIMAL CAST
     // =========================================================================
 
@@ -162,6 +222,14 @@ class CastingTest extends TestCase
         $model = TestCastableModel::fromRow(['value' => '123.456']);
 
         $this->assertEquals('123.46', $model->value);
+    }
+
+    public function test_cast_to_decimal_with_different_precision(): void
+    {
+        TestCastableModel::$testCasts = ['value' => 'decimal:4'];
+        $model = TestCastableModel::fromRow(['value' => '123.456789']);
+
+        $this->assertEquals('123.4568', $model->value);
     }
 
     // =========================================================================

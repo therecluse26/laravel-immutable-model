@@ -7,10 +7,13 @@ namespace Brighten\ImmutableModel\Tests\Parity;
 use Brighten\ImmutableModel\Tests\Models\Eloquent\EloquentUser;
 use Brighten\ImmutableModel\Tests\Models\Eloquent\EloquentPost;
 use Brighten\ImmutableModel\Tests\Models\Eloquent\EloquentProfile;
+use Brighten\ImmutableModel\Tests\Models\Eloquent\EloquentTestCastableModel;
 use Brighten\ImmutableModel\Tests\Models\ImmutableUser;
 use Brighten\ImmutableModel\Tests\Models\ImmutablePost;
 use Brighten\ImmutableModel\Tests\Models\ImmutableProfile;
+use Brighten\ImmutableModel\Tests\Models\TestCastableModel;
 use Carbon\Carbon;
+use Carbon\CarbonImmutable;
 
 /**
  * Tests that ImmutableModel casting matches Eloquent casting behavior exactly.
@@ -21,6 +24,10 @@ class CastingParityTest extends ParityTestCase
     {
         parent::setUp();
         $this->seedCastingTestData();
+
+        // Set up test castable models
+        TestCastableModel::setConnectionResolver($this->app['db']);
+        EloquentTestCastableModel::setConnectionResolver($this->app['db']);
     }
 
     protected function seedCastingTestData(): void
@@ -295,5 +302,209 @@ class CastingParityTest extends ParityTestCase
         $this->assertIsString($immutable->name);
 
         $this->assertEquals($eloquent->name, $immutable->name);
+    }
+
+    // =========================================================================
+    // OBJECT CASTING PARITY
+    // =========================================================================
+
+    public function test_object_cast_parity(): void
+    {
+        // Create test table for castable models
+        $this->createTestTable();
+
+        $this->app['db']->table('test')->insert([
+            'id' => 1,
+            'value' => '{"name": "John", "age": 30}',
+        ]);
+
+        EloquentTestCastableModel::$testCasts = ['value' => 'object'];
+        TestCastableModel::$testCasts = ['value' => 'object'];
+
+        $eloquent = EloquentTestCastableModel::find(1);
+        $immutable = TestCastableModel::find(1);
+
+        // Both should be stdClass
+        $this->assertInstanceOf(\stdClass::class, $eloquent->value);
+        $this->assertInstanceOf(\stdClass::class, $immutable->value);
+
+        // Values should match
+        $this->assertEquals($eloquent->value->name, $immutable->value->name);
+        $this->assertEquals($eloquent->value->age, $immutable->value->age);
+    }
+
+    public function test_object_cast_nested_parity(): void
+    {
+        $this->createTestTable();
+
+        $this->app['db']->table('test')->insert([
+            'id' => 1,
+            'value' => '{"user": {"name": "John", "settings": {"theme": "dark"}}}',
+        ]);
+
+        EloquentTestCastableModel::$testCasts = ['value' => 'object'];
+        TestCastableModel::$testCasts = ['value' => 'object'];
+
+        $eloquent = EloquentTestCastableModel::find(1);
+        $immutable = TestCastableModel::find(1);
+
+        // Nested objects should match
+        $this->assertEquals($eloquent->value->user->name, $immutable->value->user->name);
+        $this->assertEquals($eloquent->value->user->settings->theme, $immutable->value->user->settings->theme);
+    }
+
+    public function test_object_cast_null_parity(): void
+    {
+        $this->createTestTable();
+
+        $this->app['db']->table('test')->insert([
+            'id' => 1,
+            'value' => null,
+        ]);
+
+        EloquentTestCastableModel::$testCasts = ['value' => 'object'];
+        TestCastableModel::$testCasts = ['value' => 'object'];
+
+        $eloquent = EloquentTestCastableModel::find(1);
+        $immutable = TestCastableModel::find(1);
+
+        $this->assertNull($eloquent->value);
+        $this->assertNull($immutable->value);
+    }
+
+    // =========================================================================
+    // IMMUTABLE DATE CASTING PARITY
+    // =========================================================================
+
+    public function test_immutable_date_cast_parity(): void
+    {
+        $this->createTestTable();
+
+        $this->app['db']->table('test')->insert([
+            'id' => 1,
+            'value' => '2024-06-15',
+        ]);
+
+        EloquentTestCastableModel::$testCasts = ['value' => 'immutable_date'];
+        TestCastableModel::$testCasts = ['value' => 'immutable_date'];
+
+        $eloquent = EloquentTestCastableModel::find(1);
+        $immutable = TestCastableModel::find(1);
+
+        // Both should be CarbonImmutable
+        $this->assertInstanceOf(CarbonImmutable::class, $eloquent->value);
+        $this->assertInstanceOf(CarbonImmutable::class, $immutable->value);
+
+        // Values should match
+        $this->assertEquals(
+            $eloquent->value->toDateString(),
+            $immutable->value->toDateString()
+        );
+
+        // Time should be at midnight
+        $this->assertEquals('00:00:00', $eloquent->value->toTimeString());
+        $this->assertEquals('00:00:00', $immutable->value->toTimeString());
+    }
+
+    public function test_immutable_datetime_cast_parity(): void
+    {
+        $this->createTestTable();
+
+        $this->app['db']->table('test')->insert([
+            'id' => 1,
+            'value' => '2024-06-15 14:30:00',
+        ]);
+
+        EloquentTestCastableModel::$testCasts = ['value' => 'immutable_datetime'];
+        TestCastableModel::$testCasts = ['value' => 'immutable_datetime'];
+
+        $eloquent = EloquentTestCastableModel::find(1);
+        $immutable = TestCastableModel::find(1);
+
+        // Both should be CarbonImmutable
+        $this->assertInstanceOf(CarbonImmutable::class, $eloquent->value);
+        $this->assertInstanceOf(CarbonImmutable::class, $immutable->value);
+
+        // Values should match exactly
+        $this->assertEquals(
+            $eloquent->value->toDateTimeString(),
+            $immutable->value->toDateTimeString()
+        );
+    }
+
+    public function test_immutable_date_null_parity(): void
+    {
+        $this->createTestTable();
+
+        $this->app['db']->table('test')->insert([
+            'id' => 1,
+            'value' => null,
+        ]);
+
+        EloquentTestCastableModel::$testCasts = ['value' => 'immutable_date'];
+        TestCastableModel::$testCasts = ['value' => 'immutable_date'];
+
+        $eloquent = EloquentTestCastableModel::find(1);
+        $immutable = TestCastableModel::find(1);
+
+        $this->assertNull($eloquent->value);
+        $this->assertNull($immutable->value);
+    }
+
+    // =========================================================================
+    // DECIMAL CASTING PARITY
+    // =========================================================================
+
+    public function test_decimal_cast_parity(): void
+    {
+        $this->createTestTable();
+
+        $this->app['db']->table('test')->insert([
+            'id' => 1,
+            'value' => '123.456789',
+        ]);
+
+        EloquentTestCastableModel::$testCasts = ['value' => 'decimal:2'];
+        TestCastableModel::$testCasts = ['value' => 'decimal:2'];
+
+        $eloquent = EloquentTestCastableModel::find(1);
+        $immutable = TestCastableModel::find(1);
+
+        $this->assertEquals($eloquent->value, $immutable->value);
+        $this->assertEquals('123.46', $immutable->value);
+    }
+
+    public function test_decimal_cast_high_precision_parity(): void
+    {
+        $this->createTestTable();
+
+        $this->app['db']->table('test')->insert([
+            'id' => 1,
+            'value' => '99.123456789',
+        ]);
+
+        EloquentTestCastableModel::$testCasts = ['value' => 'decimal:6'];
+        TestCastableModel::$testCasts = ['value' => 'decimal:6'];
+
+        $eloquent = EloquentTestCastableModel::find(1);
+        $immutable = TestCastableModel::find(1);
+
+        $this->assertEquals($eloquent->value, $immutable->value);
+    }
+
+    // =========================================================================
+    // HELPER METHODS
+    // =========================================================================
+
+    /**
+     * Create the test table for TestCastableModel.
+     */
+    protected function createTestTable(): void
+    {
+        $this->app['db']->getSchemaBuilder()->dropIfExists('test');
+        $this->app['db']->getSchemaBuilder()->create('test', function ($table) {
+            $table->increments('id');
+            $table->text('value')->nullable();
+        });
     }
 }

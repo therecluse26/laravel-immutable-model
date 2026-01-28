@@ -155,6 +155,36 @@ class CollectionParityTest extends ParityTestCase
         $this->assertEquals($eloquent->count(), $immutable->count());
     }
 
+    public function test_where_strict(): void
+    {
+        $eloquent = EloquentUser::all()->whereStrict('id', 1);
+        $immutable = ImmutableUser::all()->whereStrict('id', 1);
+
+        $this->assertEquals($eloquent->count(), $immutable->count());
+        if ($eloquent->count() > 0) {
+            $this->assertEquals(
+                $eloquent->first()->name,
+                $immutable->first()->name
+            );
+        }
+    }
+
+    public function test_where_null(): void
+    {
+        $eloquent = EloquentUser::all()->whereNull('email_verified_at');
+        $immutable = ImmutableUser::all()->whereNull('email_verified_at');
+
+        $this->assertEquals($eloquent->count(), $immutable->count());
+    }
+
+    public function test_where_not_null(): void
+    {
+        $eloquent = EloquentUser::all()->whereNotNull('email_verified_at');
+        $immutable = ImmutableUser::all()->whereNotNull('email_verified_at');
+
+        $this->assertEquals($eloquent->count(), $immutable->count());
+    }
+
     // =========================================================================
     // TRANSFORMATION
     // =========================================================================
@@ -281,6 +311,38 @@ class CollectionParityTest extends ParityTestCase
         $immutable = ImmutableUser::query()->orderBy('id')->get()->skip(1)->values();
 
         $this->assertEquals($eloquent->count(), $immutable->count());
+    }
+
+    public function test_slice(): void
+    {
+        $eloquent = EloquentUser::orderBy('id')->get()->slice(1, 2);
+        $immutable = ImmutableUser::query()->orderBy('id')->get()->slice(1, 2);
+
+        $this->assertEquals($eloquent->count(), $immutable->count());
+        // Compare values
+        $eloquentNames = $eloquent->pluck('name')->toArray();
+        $immutableNames = $immutable->pluck('name')->toArray();
+        $this->assertEquals($eloquentNames, $immutableNames);
+    }
+
+    public function test_sort(): void
+    {
+        $eloquent = EloquentUser::all()->sort(fn($a, $b) => $b->id <=> $a->id)->values();
+        $immutable = ImmutableUser::all()->sort(fn($a, $b) => $b->id <=> $a->id)->values();
+
+        $this->assertEquals($eloquent->count(), $immutable->count());
+        $this->assertEquals(
+            $eloquent->first()->name,
+            $immutable->first()->name
+        );
+    }
+
+    public function test_flat_map(): void
+    {
+        $eloquent = EloquentUser::orderBy('id')->get()->flatMap(fn($u) => [$u->name, $u->email]);
+        $immutable = ImmutableUser::query()->orderBy('id')->get()->flatMap(fn($u) => [$u->name, $u->email]);
+
+        $this->assertEquals($eloquent->toArray(), $immutable->toArray());
     }
 
     public function test_unique(): void

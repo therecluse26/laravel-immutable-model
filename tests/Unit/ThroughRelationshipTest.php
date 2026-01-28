@@ -183,6 +183,48 @@ class ThroughRelationshipTest extends TestCase
         $this->assertCount(3, $users);
     }
 
+    public function test_has_one_through_respects_soft_deletes_on_intermediate(): void
+    {
+        // Soft delete the first supplier (which has User 1)
+        DB::table('suppliers')->where('id', 1)->update(['deleted_at' => now()]);
+
+        // Reload the country
+        $country = ImmutableCountry::find(1);
+        $user = $country->firstUser;
+
+        // Should get user from the non-deleted supplier (User 3 from Supplier B)
+        $this->assertInstanceOf(ImmutableUser::class, $user);
+        $this->assertEquals('User 3', $user->name);
+    }
+
+    public function test_has_one_through_with_trashed_parents(): void
+    {
+        // Soft delete the first supplier (which has User 1)
+        DB::table('suppliers')->where('id', 1)->update(['deleted_at' => now()]);
+
+        // Create a custom model that includes trashed
+        $country = new class extends ImmutableCountry {
+            public function firstUserWithTrashed()
+            {
+                return $this->hasOneThrough(
+                    ImmutableUser::class,
+                    ImmutableSupplier::class,
+                    'country_id',
+                    'supplier_id',
+                    'id',
+                    'id'
+                )->withTrashedParents();
+            }
+        };
+
+        $country = $country::find(1);
+        $user = $country->firstUserWithTrashed;
+
+        // Should get User 1 even though supplier is deleted
+        $this->assertInstanceOf(ImmutableUser::class, $user);
+        $this->assertEquals('User 1', $user->name);
+    }
+
     public function test_suppliers_have_users(): void
     {
         $supplier = ImmutableSupplier::find(1);

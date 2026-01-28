@@ -134,6 +134,56 @@ class CollectionTest extends TestCase
         $this->assertCount(1, $filtered);
     }
 
+    public function test_where_strict(): void
+    {
+        $users = ImmutableUser::all();
+        // whereStrict uses strict equality (===)
+        $filtered = $users->whereStrict('id', 1);
+
+        $this->assertInstanceOf(ImmutableCollection::class, $filtered);
+        $this->assertCount(1, $filtered);
+        $this->assertEquals('Alice', $filtered->first()->name);
+    }
+
+    public function test_where_null(): void
+    {
+        $users = ImmutableUser::all();
+        // All users have null email_verified_at
+        $filtered = $users->whereNull('email_verified_at');
+
+        $this->assertInstanceOf(ImmutableCollection::class, $filtered);
+        $this->assertCount(3, $filtered);
+    }
+
+    public function test_where_not_null(): void
+    {
+        $users = ImmutableUser::all();
+        // All users have null email_verified_at, so this should return 0
+        $filtered = $users->whereNotNull('email_verified_at');
+
+        $this->assertInstanceOf(ImmutableCollection::class, $filtered);
+        $this->assertCount(0, $filtered);
+    }
+
+    public function test_slice(): void
+    {
+        $users = ImmutableUser::query()->orderBy('id')->get();
+        $sliced = $users->slice(1, 2);
+
+        $this->assertInstanceOf(ImmutableCollection::class, $sliced);
+        $this->assertCount(2, $sliced);
+    }
+
+    public function test_sort(): void
+    {
+        $users = ImmutableUser::all();
+        // Custom sort by id descending
+        $sorted = $users->sort(fn($a, $b) => $b->id <=> $a->id);
+
+        $this->assertInstanceOf(ImmutableCollection::class, $sorted);
+        $this->assertEquals('Charlie', $sorted->first()->name);
+    }
+
     public function test_take(): void
     {
         $users = ImmutableUser::all();
