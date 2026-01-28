@@ -98,6 +98,11 @@ abstract class ImmutableModel implements ArrayAccess, JsonSerializable, Arrayabl
     protected array $visible = [];
 
     /**
+     * The format for date serialization.
+     */
+    protected ?string $dateFormat = null;
+
+    /**
      * The model's raw attributes from the database.
      *
      * @var array<string, mixed>
@@ -326,6 +331,26 @@ abstract class ImmutableModel implements ArrayAccess, JsonSerializable, Arrayabl
     }
 
     /**
+     * Get the name of the "created at" column.
+     *
+     * This method is required for Eloquent's latest() and oldest() methods.
+     */
+    public function getCreatedAtColumn(): string
+    {
+        return 'created_at';
+    }
+
+    /**
+     * Get the name of the "updated at" column.
+     *
+     * This method is provided for consistency with Eloquent's API.
+     */
+    public function getUpdatedAtColumn(): string
+    {
+        return 'updated_at';
+    }
+
+    /**
      * Hydrate a model instance from a database row.
      *
      * @param array<string, mixed>|stdClass $row
@@ -455,6 +480,35 @@ abstract class ImmutableModel implements ArrayAccess, JsonSerializable, Arrayabl
     public static function with(string|array $relations): ImmutableQueryBuilder
     {
         return static::query()->with($relations);
+    }
+
+    /**
+     * Handle dynamic static method calls into the model.
+     *
+     * Forward unknown static calls to a new query builder instance, enabling
+     * Eloquent-compatible query building like Model::whereIn(), Model::orderBy(), etc.
+     *
+     * @param string $method
+     * @param array<int, mixed> $parameters
+     * @return mixed
+     */
+    public static function __callStatic(string $method, array $parameters): mixed
+    {
+        return (new static())->newQuery()->$method(...$parameters);
+    }
+
+    /**
+     * Handle dynamic method calls into the model.
+     *
+     * Forward unknown instance calls to the query builder.
+     *
+     * @param string $method
+     * @param array<int, mixed> $parameters
+     * @return mixed
+     */
+    public function __call(string $method, array $parameters): mixed
+    {
+        return $this->newQuery()->$method(...$parameters);
     }
 
     /**
@@ -1169,17 +1223,63 @@ abstract class ImmutableModel implements ArrayAccess, JsonSerializable, Arrayabl
         $keys = $this->getArrayableAttributes();
 
         foreach ($keys as $key) {
-            $attributes[$key] = $this->getAttributeValue($key);
+            $value = $this->getAttributeValue($key);
+            $attributes[$key] = $this->serializeValue($value);
         }
 
         // Add appends
         foreach ($this->appends as $key) {
             if ($this->hasAccessor($key)) {
-                $attributes[$key] = $this->callAccessor($key);
+                $value = $this->callAccessor($key);
+                $attributes[$key] = $this->serializeValue($value);
             }
         }
 
         return $attributes;
+    }
+
+    /**
+     * Serialize a value for array/JSON output.
+     *
+     * @param mixed $value
+     * @return mixed
+     */
+    protected function serializeValue(mixed $value): mixed
+    {
+        if ($value instanceof \DateTimeInterface) {
+            return $this->serializeDate($value);
+        }
+
+        if ($value instanceof Relations\ImmutablePivot) {
+            return $value->toArray();
+        }
+
+        if ($value instanceof Arrayable) {
+            return $value->toArray();
+        }
+
+        return $value;
+    }
+
+    /**
+     * Prepare a date for array/JSON serialization.
+     *
+     * @param \DateTimeInterface $date
+     * @return string
+     */
+    protected function serializeDate(\DateTimeInterface $date): string
+    {
+        return $date->format($this->getDateFormat());
+    }
+
+    /**
+     * Get the format for date serialization.
+     *
+     * @return string
+     */
+    protected function getDateFormat(): string
+    {
+        return $this->dateFormat ?? 'Y-m-d\TH:i:s.u\Z';
     }
 
     /**
@@ -1190,6 +1290,9 @@ abstract class ImmutableModel implements ArrayAccess, JsonSerializable, Arrayabl
     protected function getArrayableAttributes(): array
     {
         $keys = array_keys($this->attributes);
+
+        // Filter out pivot_* attributes (they're handled via the pivot relation)
+        $keys = array_filter($keys, fn($key) => ! str_starts_with($key, 'pivot_'));
 
         if (count($this->visible) > 0) {
             $keys = array_intersect($keys, $this->visible);

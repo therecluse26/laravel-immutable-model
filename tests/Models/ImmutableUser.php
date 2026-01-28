@@ -95,4 +95,12 @@ class ImmutableUser extends ImmutableModel
     {
         return $this->belongsTo(ImmutableSupplier::class, 'supplier_id', 'id');
     }
+
+    /**
+     * Get the user's orders (for deep nesting testing).
+     */
+    public function orders(): ImmutableHasMany
+    {
+        return $this->hasMany(ImmutableOrder::class, 'user_id', 'id');
+    }
 }

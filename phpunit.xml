@@ -17,6 +17,9 @@
         <testsuite name="Unit">
             <directory>tests/Unit</directory>
         </testsuite>
+        <testsuite name="Parity">
+            <directory>tests/Parity</directory>
+        </testsuite>
         <testsuite name="Benchmarks">
             <directory>tests/Benchmarks</directory>
         </testsuite>

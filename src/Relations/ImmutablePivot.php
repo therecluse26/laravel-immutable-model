@@ -6,6 +6,7 @@ namespace Brighten\ImmutableModel\Relations;
 
 use ArrayAccess;
 use Brighten\ImmutableModel\Exceptions\ImmutableModelViolationException;
+use Illuminate\Contracts\Support\Arrayable;
 use JsonSerializable;
 
 /**
@@ -16,8 +17,9 @@ use JsonSerializable;
  * or mutation capabilities.
  *
  * @template-implements ArrayAccess<string, mixed>
+ * @implements Arrayable<string, mixed>
  */
-class ImmutablePivot implements ArrayAccess, JsonSerializable
+class ImmutablePivot implements ArrayAccess, JsonSerializable, Arrayable
 {
     /**
      * The pivot table attributes.
@@ -137,11 +139,36 @@ class ImmutablePivot implements ArrayAccess, JsonSerializable
     /**
      * Get the pivot attributes as an array.
      *
+     * Timestamps are serialized to ISO 8601 format to match Eloquent's behavior.
+     *
      * @return array<string, mixed>
      */
     public function toArray(): array
     {
-        return $this->attributes;
+        $result = [];
+
+        foreach ($this->attributes as $key => $value) {
+            // Serialize timestamp columns to ISO 8601 format
+            if (in_array($key, ['created_at', 'updated_at', 'deleted_at'], true) && $value !== null) {
+                if ($value instanceof \DateTimeInterface) {
+                    $result[$key] = $value->format('Y-m-d\TH:i:s.u\Z');
+                } elseif (is_string($value)) {
+                    // Parse string timestamps and reformat
+                    try {
+                        $date = new \DateTimeImmutable($value);
+                        $result[$key] = $date->format('Y-m-d\TH:i:s.u\Z');
+                    } catch (\Exception) {
+                        $result[$key] = $value;
+                    }
+                } else {
+                    $result[$key] = $value;
+                }
+            } else {
+                $result[$key] = $value;
+            }
+        }
+
+        return $result;
     }
 
     /**

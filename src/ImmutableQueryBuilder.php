@@ -186,13 +186,87 @@ class ImmutableQueryBuilder extends Builder
         }
 
         foreach ($relations as $relation) {
-            // withCount adds a {relation}_count column via subquery
-            // This requires knowledge of the relation to build the subquery
-            // For now, mark it for processing during hydration
-            $this->eagerLoad['__count_' . $relation] = true;
+            $this->addCountSubquery($relation);
         }
 
         return $this;
+    }
+
+    /**
+     * Add a count subquery for a relation.
+     */
+    private function addCountSubquery(string $relationName): void
+    {
+        // Get the relation instance from the model
+        if (! method_exists($this->model, $relationName)) {
+            return;
+        }
+
+        $relation = $this->model->{$relationName}();
+
+        // Build the count subquery based on relation type
+        if ($relation instanceof ImmutableHasMany) {
+            $this->addHasManyCountSubquery($relation, $relationName);
+        } elseif ($relation instanceof ImmutableHasOne) {
+            $this->addHasOneCountSubquery($relation, $relationName);
+        } elseif ($relation instanceof ImmutableBelongsToMany) {
+            $this->addBelongsToManyCountSubquery($relation, $relationName);
+        }
+        // Add more relation types as needed
+    }
+
+    /**
+     * Add a count subquery for HasMany relation.
+     */
+    private function addHasManyCountSubquery(ImmutableHasMany $relation, string $relationName): void
+    {
+        $relatedTable = $relation->getRelatedTable();
+        $foreignKey = $relation->getForeignKeyName();
+        $localKey = $relation->getLocalKeyName();
+        $parentTable = $this->model->getTable();
+
+        $subquery = $this->model->getConnection()
+            ->table($relatedTable)
+            ->selectRaw('count(*)')
+            ->whereColumn("{$relatedTable}.{$foreignKey}", "{$parentTable}.{$localKey}");
+
+        $this->selectSub($subquery, "{$relationName}_count");
+    }
+
+    /**
+     * Add a count subquery for HasOne relation.
+     */
+    private function addHasOneCountSubquery(ImmutableHasOne $relation, string $relationName): void
+    {
+        $relatedTable = $relation->getRelatedTable();
+        $foreignKey = $relation->getForeignKeyName();
+        $localKey = $relation->getLocalKeyName();
+        $parentTable = $this->model->getTable();
+
+        $subquery = $this->model->getConnection()
+            ->table($relatedTable)
+            ->selectRaw('count(*)')
+            ->whereColumn("{$relatedTable}.{$foreignKey}", "{$parentTable}.{$localKey}");
+
+        $this->selectSub($subquery, "{$relationName}_count");
+    }
+
+    /**
+     * Add a count subquery for BelongsToMany relation.
+     */
+    private function addBelongsToManyCountSubquery(ImmutableBelongsToMany $relation, string $relationName): void
+    {
+        $pivotTable = $relation->getTable();
+        $foreignPivotKey = $relation->getForeignPivotKeyName();
+        $parentKey = $relation->getParentKeyName();
+        $parentTable = $this->model->getTable();
+
+        $subquery = $this->model->getConnection()
+            ->table($pivotTable)
+            ->selectRaw('count(*)')
+            ->whereColumn("{$pivotTable}.{$foreignPivotKey}", "{$parentTable}.{$parentKey}");
+
+        $this->selectSub($subquery, "{$relationName}_count");
     }
 
     // =========================================================================
@@ -342,29 +416,106 @@ class ImmutableQueryBuilder extends Builder
             return;
         }
 
+        // Separate top-level relations from nested ones
+        $topLevelRelations = [];
+        $nestedRelations = [];
+
         foreach ($this->eagerLoad as $name => $constraints) {
             // Skip count relations for now
             if (str_starts_with($name, '__count_')) {
                 continue;
             }
 
-            // Skip nested relations (they're handled by their parent)
             if (str_contains($name, '.')) {
-                continue;
-            }
+                // Parse nested relation: 'posts.comments' -> parent: 'posts', nested: 'comments'
+                $parts = explode('.', $name, 2);
+                $parent = $parts[0];
+                $nested = $parts[1];
 
+                if (! isset($nestedRelations[$parent])) {
+                    $nestedRelations[$parent] = [];
+                }
+                $nestedRelations[$parent][$nested] = $constraints;
+            } else {
+                $topLevelRelations[$name] = $constraints;
+            }
+        }
+
+        // Load top-level relations first
+        foreach ($topLevelRelations as $name => $constraints) {
             $this->loadRelation($models, $name, $constraints);
+        }
+
+        // Then load nested relations on the loaded relations
+        foreach ($nestedRelations as $parentRelation => $nestedLoads) {
+            $this->loadNestedRelations($models, $parentRelation, $nestedLoads);
         }
     }
 
     /**
-     * Load a single relation onto the models.
+     * Load nested relations on already-loaded parent relations.
+     *
+     * @param array<string, Closure|null> $nestedLoads
+     */
+    private function loadNestedRelations(ImmutableCollection $models, string $parentRelation, array $nestedLoads): void
+    {
+        // Collect all the loaded parent relation models
+        $parentModels = [];
+
+        foreach ($models as $model) {
+            $loaded = $model->getRelation($parentRelation);
+
+            if ($loaded === null) {
+                continue;
+            }
+
+            if ($loaded instanceof ImmutableCollection) {
+                foreach ($loaded as $item) {
+                    if ($item instanceof ImmutableModel) {
+                        $parentModels[] = $item;
+                    }
+                }
+            } elseif ($loaded instanceof ImmutableModel) {
+                $parentModels[] = $loaded;
+            }
+        }
+
+        if (empty($parentModels)) {
+            return;
+        }
+
+        $parentCollection = new ImmutableCollection($parentModels);
+
+        // Load each nested relation on the parent collection
+        foreach ($nestedLoads as $nestedName => $constraints) {
+            // Handle further nesting (e.g., 'comments.author' for 'posts.comments.author')
+            if (str_contains($nestedName, '.')) {
+                $parts = explode('.', $nestedName, 2);
+                $immediateName = $parts[0];
+                $furtherNested = $parts[1];
+
+                // Load the immediate relation first
+                $this->loadRelationOnCollection($parentCollection, $immediateName, null);
+
+                // Then load further nested
+                $this->loadNestedRelations($parentCollection, $immediateName, [$furtherNested => $constraints]);
+            } else {
+                $this->loadRelationOnCollection($parentCollection, $nestedName, $constraints);
+            }
+        }
+    }
+
+    /**
+     * Load a relation on a collection of models.
      *
      * @param Closure|null $constraints
      */
-    private function loadRelation(ImmutableCollection $models, string $name, ?Closure $constraints): void
+    private function loadRelationOnCollection(ImmutableCollection $models, string $name, ?Closure $constraints): void
     {
-        // Get the first model to determine relation type
+        if ($models->isEmpty()) {
+            return;
+        }
+
         $firstModel = $models->first();
 
         if (! method_exists($firstModel, $name)) {
@@ -373,7 +524,7 @@ class ImmutableQueryBuilder extends Builder
 
         $relation = $firstModel->{$name}();
 
-        // Match results back to models
+        // Call eagerLoadOnCollection for relation types that support it
         if ($relation instanceof ImmutableBelongsTo ||
             $relation instanceof ImmutableHasOne ||
             $relation instanceof ImmutableHasMany ||
@@ -386,6 +537,16 @@ class ImmutableQueryBuilder extends Builder
             $relation instanceof ImmutableMorphToMany) {
             $relation->eagerLoadOnCollection($models, $name, $constraints);
         }
+    }
+
+    /**
+     * Load a single relation onto the models.
+     *
+     * @param Closure|null $constraints
+     */
+    private function loadRelation(ImmutableCollection $models, string $name, ?Closure $constraints): void
+    {
+        $this->loadRelationOnCollection($models, $name, $constraints);
     }
 
     // =========================================================================

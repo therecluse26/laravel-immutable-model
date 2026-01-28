@@ -198,4 +198,30 @@ class ImmutableHasOne
 
         return $this->getConstrainedQuery()->{$method}(...$parameters);
     }
+
+    /**
+     * Get the related model's table name.
+     */
+    public function getRelatedTable(): string
+    {
+        $related = $this->related;
+
+        return (new $related())->getTable();
+    }
+
+    /**
+     * Get the foreign key name.
+     */
+    public function getForeignKeyName(): string
+    {
+        return $this->foreignKey;
+    }
+
+    /**
+     * Get the local key name.
+     */
+    public function getLocalKeyName(): string
+    {
+        return $this->localKey;
+    }
 }

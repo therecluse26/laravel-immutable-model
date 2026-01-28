@@ -122,10 +122,92 @@ return new class extends Migration
         Schema::table('users', function (Blueprint $table) {
             $table->foreignId('supplier_id')->nullable()->after('email_verified_at')->constrained()->onDelete('set null');
         });
+
+        // =========================================================================
+        // Tables for edge case testing (self-referential, UUID, deep nesting, etc.)
+        // =========================================================================
+
+        // Self-referential categories table
+        Schema::create('immutable_categories', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('parent_id')->nullable();
+            $table->string('name');
+            $table->string('slug')->unique();
+            $table->integer('depth')->default(0);
+            $table->timestamps();
+            $table->foreign('parent_id')->references('id')->on('immutable_categories')->onDelete('set null');
+        });
+
+        // UUID products table (for non-incrementing primary key testing)
+        Schema::create('products', function (Blueprint $table) {
+            $table->uuid('uuid')->primary();
+            $table->string('name');
+            $table->decimal('price', 10, 2);
+            $table->string('sku')->unique();
+            $table->json('metadata')->nullable();
+            $table->timestamps();
+        });
+
+        // Orders table (for deep nesting: Country -> Supplier -> User -> Order)
+        Schema::create('orders', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->string('status')->default('pending');
+            $table->decimal('total', 10, 2)->default(0);
+            $table->timestamps();
+        });
+
+        // Order items table (for 5-level deep nesting)
+        Schema::create('order_items', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('order_id')->constrained()->onDelete('cascade');
+            $table->uuid('product_uuid')->nullable();
+            $table->integer('quantity')->default(1);
+            $table->decimal('price', 10, 2);
+            $table->timestamps();
+            $table->foreign('product_uuid')->references('uuid')->on('products')->onDelete('set null');
+        });
+
+        // Videos table (additional polymorphic target)
+        Schema::create('videos', function (Blueprint $table) {
+            $table->id();
+            $table->string('title');
+            $table->string('url');
+            $table->timestamps();
+        });
+
+        // Articles table (with soft deletes for comprehensive testing)
+        Schema::create('articles', function (Blueprint $table) {
+            $table->id();
+            $table->string('title');
+            $table->text('content');
+            $table->timestamp('published_at')->nullable();
+            $table->timestamps();
+            $table->softDeletes();
+        });
+
+        // Database view for view-backed model testing
+        // SQLite supports basic CREATE VIEW
+        \Illuminate\Support\Facades\DB::statement('CREATE VIEW user_post_counts AS
+            SELECT users.id as user_id, users.name, COUNT(posts.id) as post_count
+            FROM users
+            LEFT JOIN posts ON users.id = posts.user_id
+            GROUP BY users.id, users.name');
     }
 
     public function down(): void
     {
+        // Drop view first
+        \Illuminate\Support\Facades\DB::statement('DROP VIEW IF EXISTS user_post_counts');
+
+        // Drop edge case tables
+        Schema::dropIfExists('articles');
+        Schema::dropIfExists('videos');
+        Schema::dropIfExists('order_items');
+        Schema::dropIfExists('orders');
+        Schema::dropIfExists('products');
+        Schema::dropIfExists('immutable_categories');
+
         // Drop supplier_id from users first
         Schema::table('users', function (Blueprint $table) {
             $table->dropForeign(['supplier_id']);
