@@ -383,4 +383,36 @@ class RelationQueryBuilderTest extends TestCase
 
         $this->assertCount(1, $posts);
     }
+
+    // =========================================================================
+    // Relation Builder with() Method Tests
+    // =========================================================================
+
+    public function test_has_many_relation_builder_with_nested_eager_load(): void
+    {
+        // Test pattern: $user->posts()->with('comments')->get()
+        $posts = $this->user->posts()->with('comments')->get();
+
+        $this->assertInstanceOf(ImmutableCollection::class, $posts);
+        $this->assertCount(3, $posts);
+
+        // Verify nested relation was eager loaded
+        $firstPost = $posts->first();
+        $this->assertTrue($firstPost->relationLoaded('comments'));
+    }
+
+    public function test_morph_many_relation_builder_with_nested_eager_load(): void
+    {
+        // Test pattern: $post->images()->with('imageable')->get()
+        // This is the pattern that triggered the IDE warning
+        $images = $this->post->images()->with('imageable')->get();
+
+        $this->assertInstanceOf(ImmutableCollection::class, $images);
+        $this->assertCount(2, $images);
+
+        // Verify nested relation was eager loaded
+        $firstImage = $images->first();
+        $this->assertTrue($firstImage->relationLoaded('imageable'));
+        $this->assertInstanceOf(ImmutablePost::class, $firstImage->imageable);
+    }
 }

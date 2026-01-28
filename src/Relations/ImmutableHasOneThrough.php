@@ -18,6 +18,22 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * Example: Country -> Supplier -> User
  * A country has one user through its supplier.
  *
+ * @method $this|ImmutableQueryBuilder with(string|array $relations, string|\Closure|null $callback = null)
+ * @method $this|ImmutableQueryBuilder withCount(string|array $relations)
+ * @method $this|ImmutableQueryBuilder where(string|\Closure $column, mixed $operator = null, mixed $value = null)
+ * @method $this|ImmutableQueryBuilder whereIn(string $column, array $values)
+ * @method $this|ImmutableQueryBuilder whereNull(string $column)
+ * @method $this|ImmutableQueryBuilder whereNotNull(string $column)
+ * @method $this|ImmutableQueryBuilder orderBy(string $column, string $direction = 'asc')
+ * @method $this|ImmutableQueryBuilder orderByDesc(string $column)
+ * @method $this|ImmutableQueryBuilder limit(int $value)
+ * @method $this|ImmutableQueryBuilder offset(int $value)
+ * @method $this|ImmutableQueryBuilder select(array|string $columns)
+ * @method ImmutableCollection|\Illuminate\Support\Collection get(array $columns = ['*'])
+ * @method TRelatedModel|null first(array $columns = ['*'])
+ * @method int count(string $columns = '*')
+ * @method bool exists()
+ *
  * @template TRelatedModel of ImmutableModel|EloquentModel
  * @template TThroughModel of ImmutableModel|EloquentModel
  */

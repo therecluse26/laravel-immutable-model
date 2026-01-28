@@ -18,6 +18,22 @@ use Illuminate\Database\Eloquent\Model as EloquentModel;
  *
  * Unlike other relations, MorphTo dynamically resolves the target model class
  * based on the morph type value stored in the parent model.
+ *
+ * @method $this|\Brighten\ImmutableModel\ImmutableQueryBuilder with(string|array $relations, string|\Closure|null $callback = null)
+ * @method $this|\Brighten\ImmutableModel\ImmutableQueryBuilder withCount(string|array $relations)
+ * @method $this|\Brighten\ImmutableModel\ImmutableQueryBuilder where(string|\Closure $column, mixed $operator = null, mixed $value = null)
+ * @method $this|\Brighten\ImmutableModel\ImmutableQueryBuilder whereIn(string $column, array $values)
+ * @method $this|\Brighten\ImmutableModel\ImmutableQueryBuilder whereNull(string $column)
+ * @method $this|\Brighten\ImmutableModel\ImmutableQueryBuilder whereNotNull(string $column)
+ * @method $this|\Brighten\ImmutableModel\ImmutableQueryBuilder orderBy(string $column, string $direction = 'asc')
+ * @method $this|\Brighten\ImmutableModel\ImmutableQueryBuilder orderByDesc(string $column)
+ * @method $this|\Brighten\ImmutableModel\ImmutableQueryBuilder limit(int $value)
+ * @method $this|\Brighten\ImmutableModel\ImmutableQueryBuilder offset(int $value)
+ * @method $this|\Brighten\ImmutableModel\ImmutableQueryBuilder select(array|string $columns)
+ * @method \Brighten\ImmutableModel\ImmutableCollection|\Illuminate\Support\Collection get(array $columns = ['*'])
+ * @method \Brighten\ImmutableModel\ImmutableModel|\Illuminate\Database\Eloquent\Model|null first(array $columns = ['*'])
+ * @method int count(string $columns = '*')
+ * @method bool exists()
  */
 class ImmutableMorphTo
 {
