@@ -124,12 +124,190 @@ abstract class ImmutableModel implements ArrayAccess, JsonSerializable, Arrayabl
     /**
      * Create a new immutable model instance.
      *
-     * The constructor is final and protected to prevent direct instantiation.
-     * Models must be hydrated through query results or factory methods.
+     * The constructor is final and public to allow Laravel's relationship system
+     * to create template instances. However, an instance created via `new` has no
+     * attributes and is essentially useless except as a template for query building.
+     *
+     * Immutability is preserved because:
+     * - There is no fill() method
+     * - __set() throws ImmutableModelViolationException
+     * - Attributes can only be set via internal hydration methods
      */
-    final protected function __construct()
+    final public function __construct()
     {
         // Intentionally empty - attributes are set via hydration
+    }
+
+    // =========================================================================
+    // LARAVEL INTEROP - Methods required for Eloquent relationship compatibility
+    // =========================================================================
+
+    /**
+     * Create a new instance of the model.
+     *
+     * This method is used by Laravel's relationship system to create template
+     * instances for building queries. The $attributes and $exists parameters
+     * are ignored since ImmutableModels cannot be filled or marked as existing.
+     *
+     * @param array<string, mixed> $attributes Ignored
+     * @param bool $exists Ignored
+     */
+    public function newInstance($attributes = [], $exists = false): static
+    {
+        $model = new static();
+
+        // Copy connection to new instance if set
+        if ($this->connection !== null) {
+            $model->connection = $this->connection;
+        }
+
+        return $model;
+    }
+
+    /**
+     * Create a new model instance from database row data.
+     *
+     * This method is called by Laravel's Eloquent builder during hydration.
+     * It delegates to our existing fromRow() method to ensure proper hydration.
+     *
+     * @param array<string, mixed>|object $attributes
+     */
+    public function newFromBuilder($attributes = [], $connection = null): static
+    {
+        $model = static::fromRow((array) $attributes);
+
+        // Set connection if provided
+        if ($connection !== null) {
+            $model->connection = $connection;
+        } elseif ($this->connection !== null) {
+            $model->connection = $this->connection;
+        }
+
+        return $model;
+    }
+
+    /**
+     * Set the connection associated with the model.
+     *
+     * This method is called by Laravel's relationship system when creating
+     * template instances. The connection is used for subsequent queries.
+     */
+    public function setConnection(?string $name): static
+    {
+        $this->connection = $name;
+
+        return $this;
+    }
+
+    /**
+     * Create a new ImmutableCollection instance.
+     *
+     * This method is called by Laravel's relationship system when wrapping
+     * query results in a collection.
+     *
+     * @param array<int, static> $models
+     */
+    public function newCollection(array $models = []): ImmutableCollection
+    {
+        return new ImmutableCollection($models);
+    }
+
+    /**
+     * Qualify a column name with the model's table.
+     *
+     * This method is called by Laravel's relationship system when building
+     * queries to ensure column names are properly qualified with table names.
+     */
+    public function qualifyColumn(string $column): string
+    {
+        if (str_contains($column, '.')) {
+            return $column;
+        }
+
+        return $this->getTable() . '.' . $column;
+    }
+
+    /**
+     * Determine if the model has a named scope.
+     *
+     * ImmutableModels do not support local scopes, so this always returns false.
+     * This method is required for Laravel's Builder compatibility.
+     */
+    public function hasNamedScope(string $scope): bool
+    {
+        return false;
+    }
+
+    /**
+     * Get the fully qualified key name for the model.
+     *
+     * This method is used by Laravel's relationship system.
+     */
+    public function getQualifiedKeyName(): string
+    {
+        return $this->qualifyColumn($this->getKeyName() ?? 'id');
+    }
+
+    /**
+     * Get the foreign key for the model.
+     *
+     * This method is used by Laravel's relationship system.
+     */
+    public function getForeignKey(): string
+    {
+        return Str::snake(class_basename($this)) . '_' . ($this->primaryKey ?? 'id');
+    }
+
+    /**
+     * Determine if the model has any mutator attributes.
+     *
+     * ImmutableModels do not support mutators, so this always returns false.
+     * This method is required for Laravel's Builder pluck() compatibility.
+     */
+    public function hasAnyGetMutator(): bool
+    {
+        return false;
+    }
+
+    /**
+     * Determine if the given attribute has a cast.
+     *
+     * This method is required for Laravel's Builder pluck() compatibility.
+     */
+    public function hasCast(string $key, $types = null): bool
+    {
+        if (! array_key_exists($key, $this->casts)) {
+            return false;
+        }
+
+        if ($types === null) {
+            return true;
+        }
+
+        $types = is_array($types) ? $types : [$types];
+
+        return in_array($this->casts[$key], $types, true);
+    }
+
+    /**
+     * Get the attributes that should be converted to dates.
+     *
+     * This method is required for Laravel's Builder pluck() compatibility.
+     *
+     * @return array<int, string>
+     */
+    public function getDates(): array
+    {
+        // Return attribute names that have datetime casts
+        $dates = [];
+
+        foreach ($this->casts as $key => $cast) {
+            if (in_array($cast, ['datetime', 'date', 'immutable_datetime', 'immutable_date'], true)) {
+                $dates[] = $key;
+            }
+        }
+
+        return $dates;
     }
 
     /**

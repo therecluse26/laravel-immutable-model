@@ -8,6 +8,7 @@ use Brighten\ImmutableModel\ImmutableCollection;
 use Brighten\ImmutableModel\ImmutableModel;
 use Brighten\ImmutableModel\Relations\ImmutableHasMany;
 use Brighten\ImmutableModel\Relations\ImmutableHasOne;
+use Brighten\ImmutableModel\Tests\Models\Mutable\UserSettings;
 
 /**
  * Immutable user model for testing.
@@ -22,6 +23,7 @@ use Brighten\ImmutableModel\Relations\ImmutableHasOne;
  * @property-read ImmutableProfile|null $profile
  * @property-read ImmutableCollection<ImmutablePost> $posts
  * @property-read ImmutableCollection<ImmutableComment> $comments
+ * @property-read UserSettings|null $mutableSettings
  */
 class ImmutableUser extends ImmutableModel
 {
@@ -72,5 +74,15 @@ class ImmutableUser extends ImmutableModel
     public function comments(): ImmutableHasMany
     {
         return $this->hasMany(ImmutableComment::class, 'user_id', 'id');
+    }
+
+    /**
+     * Get the user's settings (mutable model).
+     *
+     * Named "mutableSettings" to avoid conflict with the "settings" JSON attribute.
+     */
+    public function mutableSettings(): ImmutableHasOne
+    {
+        return $this->hasOne(UserSettings::class, 'user_id', 'id');
     }
 }

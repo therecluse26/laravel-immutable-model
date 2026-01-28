@@ -4,45 +4,31 @@ declare(strict_types=1);
 
 namespace Brighten\ImmutableModel;
 
-use ArrayAccess;
 use Brighten\ImmutableModel\Exceptions\ImmutableModelViolationException;
-use Countable;
-use Illuminate\Contracts\Support\Arrayable;
-use Illuminate\Contracts\Support\Jsonable;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
-use IteratorAggregate;
-use JsonSerializable;
 use stdClass;
-use Traversable;
 
 /**
  * An immutable collection of ImmutableModel instances.
  *
- * Wraps Illuminate\Support\Collection while blocking all mutation operations.
- * Transformations that preserve ImmutableModel items return ImmutableCollection,
- * while transformations that may change item types return base Collection.
+ * Extends Illuminate\Database\Eloquent\Collection for full Laravel compatibility
+ * while blocking all mutation operations. This allows ImmutableCollections to work
+ * seamlessly with Laravel's relationship system (eager loading, matching, etc.).
  *
  * @template TModel of ImmutableModel
- * @implements IteratorAggregate<int, TModel>
- * @implements ArrayAccess<int, TModel>
+ * @extends EloquentCollection<int, TModel>
  */
-class ImmutableCollection implements IteratorAggregate, Countable, ArrayAccess, JsonSerializable, Arrayable, Jsonable
+class ImmutableCollection extends EloquentCollection
 {
-    /**
-     * The underlying collection.
-     *
-     * @var Collection<int, TModel>
-     */
-    private Collection $items;
-
     /**
      * Create a new immutable collection instance.
      *
      * @param iterable<TModel> $items
      */
-    public function __construct(iterable $items = [])
+    public function __construct($items = [])
     {
-        $this->items = $items instanceof Collection ? $items : new Collection($items);
+        parent::__construct($items);
     }
 
     /**
@@ -78,7 +64,7 @@ class ImmutableCollection implements IteratorAggregate, Countable, ArrayAccess, 
      */
     public function toBase(): Collection
     {
-        return new Collection($this->items->all());
+        return new Collection($this->items);
     }
 
     // =========================================================================
@@ -87,53 +73,13 @@ class ImmutableCollection implements IteratorAggregate, Countable, ArrayAccess, 
     // =========================================================================
 
     /**
-     * Get all items in the collection.
-     *
-     * @return array<int, TModel>
-     */
-    public function all(): array
-    {
-        return $this->items->all();
-    }
-
-    /**
-     * Get the first item from the collection.
-     *
-     * @return TModel|null
-     */
-    public function first(?callable $callback = null, mixed $default = null): mixed
-    {
-        return $this->items->first($callback, $default);
-    }
-
-    /**
-     * Get the last item from the collection.
-     *
-     * @return TModel|null
-     */
-    public function last(?callable $callback = null, mixed $default = null): mixed
-    {
-        return $this->items->last($callback, $default);
-    }
-
-    /**
-     * Get an item by key.
-     *
-     * @return TModel|null
-     */
-    public function get(int|string $key, mixed $default = null): mixed
-    {
-        return $this->items->get($key, $default);
-    }
-
-    /**
      * Run a filter over each of the items.
      *
      * @return self<TModel>
      */
     public function filter(?callable $callback = null): self
     {
-        return new self($this->items->filter($callback)->values());
+        return new self(parent::filter($callback)->values());
     }
 
     /**
@@ -141,9 +87,9 @@ class ImmutableCollection implements IteratorAggregate, Countable, ArrayAccess, 
      *
      * @return self<TModel>
      */
-    public function reject(callable $callback): self
+    public function reject($callback = true): self
     {
-        return new self($this->items->reject($callback)->values());
+        return new self(parent::reject($callback)->values());
     }
 
     /**
@@ -151,9 +97,9 @@ class ImmutableCollection implements IteratorAggregate, Countable, ArrayAccess, 
      *
      * @return self<TModel>
      */
-    public function where(string $key, mixed $operator = null, mixed $value = null): self
+    public function where($key, $operator = null, $value = null): self
     {
-        return new self($this->items->where($key, $operator, $value)->values());
+        return new self(parent::where(...func_get_args())->values());
     }
 
     /**
@@ -161,9 +107,9 @@ class ImmutableCollection implements IteratorAggregate, Countable, ArrayAccess, 
      *
      * @return self<TModel>
      */
-    public function whereStrict(string $key, mixed $value): self
+    public function whereStrict($key, $value): self
     {
-        return new self($this->items->whereStrict($key, $value)->values());
+        return new self(parent::whereStrict($key, $value)->values());
     }
 
     /**
@@ -172,9 +118,9 @@ class ImmutableCollection implements IteratorAggregate, Countable, ArrayAccess, 
      * @param array<int, mixed> $values
      * @return self<TModel>
      */
-    public function whereIn(string $key, array $values, bool $strict = false): self
+    public function whereIn($key, $values, $strict = false): self
     {
-        return new self($this->items->whereIn($key, $values, $strict)->values());
+        return new self(parent::whereIn($key, $values, $strict)->values());
     }
 
     /**
@@ -183,9 +129,9 @@ class ImmutableCollection implements IteratorAggregate, Countable, ArrayAccess, 
      * @param array<int, mixed> $values
      * @return self<TModel>
      */
-    public function whereNotIn(string $key, array $values, bool $strict = false): self
+    public function whereNotIn($key, $values, $strict = false): self
     {
-        return new self($this->items->whereNotIn($key, $values, $strict)->values());
+        return new self(parent::whereNotIn($key, $values, $strict)->values());
     }
 
     /**
@@ -193,9 +139,9 @@ class ImmutableCollection implements IteratorAggregate, Countable, ArrayAccess, 
      *
      * @return self<TModel>
      */
-    public function whereNull(?string $key = null): self
+    public function whereNull($key = null): self
     {
-        return new self($this->items->whereNull($key)->values());
+        return new self(parent::whereNull($key)->values());
     }
 
     /**
@@ -203,9 +149,9 @@ class ImmutableCollection implements IteratorAggregate, Countable, ArrayAccess, 
      *
      * @return self<TModel>
      */
-    public function whereNotNull(?string $key = null): self
+    public function whereNotNull($key = null): self
     {
-        return new self($this->items->whereNotNull($key)->values());
+        return new self(parent::whereNotNull($key)->values());
     }
 
     /**
@@ -213,9 +159,9 @@ class ImmutableCollection implements IteratorAggregate, Countable, ArrayAccess, 
      *
      * @return self<TModel>
      */
-    public function take(int $limit): self
+    public function take($limit): self
     {
-        return new self($this->items->take($limit));
+        return new self(parent::take($limit));
     }
 
     /**
@@ -223,9 +169,9 @@ class ImmutableCollection implements IteratorAggregate, Countable, ArrayAccess, 
      *
      * @return self<TModel>
      */
-    public function skip(int $count): self
+    public function skip($count): self
     {
-        return new self($this->items->skip($count)->values());
+        return new self(parent::skip($count)->values());
     }
 
     /**
@@ -233,9 +179,9 @@ class ImmutableCollection implements IteratorAggregate, Countable, ArrayAccess, 
      *
      * @return self<TModel>
      */
-    public function slice(int $offset, ?int $length = null): self
+    public function slice($offset, $length = null): self
     {
-        return new self($this->items->slice($offset, $length)->values());
+        return new self(parent::slice($offset, $length)->values());
     }
 
     /**
@@ -243,9 +189,9 @@ class ImmutableCollection implements IteratorAggregate, Countable, ArrayAccess, 
      *
      * @return self<TModel>
      */
-    public function unique(string|callable|null $key = null, bool $strict = false): self
+    public function unique($key = null, $strict = false): self
     {
-        return new self($this->items->unique($key, $strict)->values());
+        return new self(parent::unique($key, $strict)->values());
     }
 
     /**
@@ -253,9 +199,9 @@ class ImmutableCollection implements IteratorAggregate, Countable, ArrayAccess, 
      *
      * @return self<TModel>
      */
-    public function sort(?callable $callback = null): self
+    public function sort($callback = null): self
     {
-        return new self($this->items->sort($callback)->values());
+        return new self(parent::sort($callback)->values());
     }
 
     /**
@@ -263,9 +209,9 @@ class ImmutableCollection implements IteratorAggregate, Countable, ArrayAccess, 
      *
      * @return self<TModel>
      */
-    public function sortBy(string|callable $callback, int $options = SORT_REGULAR, bool $descending = false): self
+    public function sortBy($callback, $options = SORT_REGULAR, $descending = false): self
     {
-        return new self($this->items->sortBy($callback, $options, $descending)->values());
+        return new self(parent::sortBy($callback, $options, $descending)->values());
     }
 
     /**
@@ -273,9 +219,9 @@ class ImmutableCollection implements IteratorAggregate, Countable, ArrayAccess, 
      *
      * @return self<TModel>
      */
-    public function sortByDesc(string|callable $callback, int $options = SORT_REGULAR): self
+    public function sortByDesc($callback, $options = SORT_REGULAR): self
     {
-        return new self($this->items->sortByDesc($callback, $options)->values());
+        return new self(parent::sortByDesc($callback, $options)->values());
     }
 
     /**
@@ -285,7 +231,7 @@ class ImmutableCollection implements IteratorAggregate, Countable, ArrayAccess, 
      */
     public function reverse(): self
     {
-        return new self($this->items->reverse()->values());
+        return new self(parent::reverse()->values());
     }
 
     /**
@@ -295,62 +241,28 @@ class ImmutableCollection implements IteratorAggregate, Countable, ArrayAccess, 
      */
     public function values(): self
     {
-        return new self($this->items->values());
+        return new self(parent::values());
     }
 
     // =========================================================================
-    // COLLECTION METHODS THAT MAY CHANGE ITEM TYPES
-    // These return base Collection
+    // METHODS THAT RETURN BASE COLLECTION
+    // These may transform or restructure data in ways incompatible with ImmutableCollection
     // =========================================================================
-
-    /**
-     * Run a map over each of the items.
-     *
-     * @return Collection<int, mixed>
-     */
-    public function map(callable $callback): Collection
-    {
-        return $this->items->map($callback);
-    }
-
-    /**
-     * Get the values of a given key.
-     *
-     * @return Collection<int|string, mixed>
-     */
-    public function pluck(string $value, ?string $key = null): Collection
-    {
-        return $this->items->pluck($value, $key);
-    }
-
-    /**
-     * Get the keys of the collection items.
-     *
-     * @return Collection<int, int|string>
-     */
-    public function keys(): Collection
-    {
-        return $this->items->keys();
-    }
-
-    /**
-     * Map a collection and flatten the result by a single level.
-     *
-     * @return Collection<int, mixed>
-     */
-    public function flatMap(callable $callback): Collection
-    {
-        return $this->items->flatMap($callback);
-    }
 
     /**
      * Group an associative array by a field or using a callback.
      *
-     * @return Collection<string|int, Collection>
+     * Returns a base Collection since grouping creates nested collections
+     * that need to be modifiable during construction.
+     *
+     * @return Collection<string|int, Collection<int, TModel>>
      */
-    public function groupBy(string|callable $groupBy, bool $preserveKeys = false): Collection
+    public function groupBy($groupBy, $preserveKeys = false): Collection
     {
-        return $this->items->groupBy($groupBy, $preserveKeys);
+        // Get raw items and use a base collection to perform the groupBy
+        $base = new Collection($this->items);
+
+        return $base->groupBy($groupBy, $preserveKeys);
     }
 
     /**
@@ -358,173 +270,11 @@ class ImmutableCollection implements IteratorAggregate, Countable, ArrayAccess, 
      *
      * @return Collection<string|int, TModel>
      */
-    public function keyBy(string|callable $keyBy): Collection
+    public function keyBy($keyBy): Collection
     {
-        return $this->items->keyBy($keyBy);
-    }
+        $base = new Collection($this->items);
 
-    // =========================================================================
-    // AGGREGATE & QUERY METHODS
-    // =========================================================================
-
-    /**
-     * Count the number of items in the collection.
-     */
-    public function count(): int
-    {
-        return $this->items->count();
-    }
-
-    /**
-     * Determine if the collection is empty.
-     */
-    public function isEmpty(): bool
-    {
-        return $this->items->isEmpty();
-    }
-
-    /**
-     * Determine if the collection is not empty.
-     */
-    public function isNotEmpty(): bool
-    {
-        return $this->items->isNotEmpty();
-    }
-
-    /**
-     * Determine if an item exists in the collection.
-     */
-    public function contains(mixed $key, mixed $operator = null, mixed $value = null): bool
-    {
-        return $this->items->contains($key, $operator, $value);
-    }
-
-    /**
-     * Search the collection for a given value and return the corresponding key if successful.
-     */
-    public function search(mixed $value, bool $strict = false): int|string|false
-    {
-        return $this->items->search($value, $strict);
-    }
-
-    /**
-     * Get the sum of the given values.
-     */
-    public function sum(string|callable|null $callback = null): mixed
-    {
-        return $this->items->sum($callback);
-    }
-
-    /**
-     * Get the average value of a given key.
-     */
-    public function avg(string|callable|null $callback = null): mixed
-    {
-        return $this->items->avg($callback);
-    }
-
-    /**
-     * Get the min value of a given key.
-     */
-    public function min(string|callable|null $callback = null): mixed
-    {
-        return $this->items->min($callback);
-    }
-
-    /**
-     * Get the max value of a given key.
-     */
-    public function max(string|callable|null $callback = null): mixed
-    {
-        return $this->items->max($callback);
-    }
-
-    /**
-     * Execute a callback over each item.
-     *
-     * @return $this
-     */
-    public function each(callable $callback): self
-    {
-        $this->items->each($callback);
-
-        return $this;
-    }
-
-    /**
-     * Reduce the collection to a single value.
-     */
-    public function reduce(callable $callback, mixed $initial = null): mixed
-    {
-        return $this->items->reduce($callback, $initial);
-    }
-
-    /**
-     * Determine if any item passes the given truth test.
-     */
-    public function some(string|callable $key, mixed $operator = null, mixed $value = null): bool
-    {
-        return $this->contains($key, $operator, $value);
-    }
-
-    /**
-     * Determine if every item passes the given truth test.
-     */
-    public function every(string|callable $key, mixed $operator = null, mixed $value = null): bool
-    {
-        return $this->items->every($key, $operator, $value);
-    }
-
-    // =========================================================================
-    // ITERATION & ACCESS
-    // =========================================================================
-
-    /**
-     * Get an iterator for the items.
-     *
-     * @return Traversable<int, TModel>
-     */
-    public function getIterator(): Traversable
-    {
-        return $this->items->getIterator();
-    }
-
-    /**
-     * Determine if an item exists at an offset.
-     */
-    public function offsetExists(mixed $offset): bool
-    {
-        return $this->items->offsetExists($offset);
-    }
-
-    /**
-     * Get an item at a given offset.
-     *
-     * @return TModel|null
-     */
-    public function offsetGet(mixed $offset): mixed
-    {
-        return $this->items->offsetGet($offset);
-    }
-
-    /**
-     * Set the item at a given offset (throws).
-     *
-     * @throws ImmutableModelViolationException
-     */
-    public function offsetSet(mixed $offset, mixed $value): never
-    {
-        throw ImmutableModelViolationException::collectionMutation('offsetSet');
-    }
-
-    /**
-     * Unset the item at a given offset (throws).
-     *
-     * @throws ImmutableModelViolationException
-     */
-    public function offsetUnset(mixed $offset): never
-    {
-        throw ImmutableModelViolationException::collectionMutation('offsetUnset');
+        return $base->keyBy($keyBy);
     }
 
     // =========================================================================
@@ -538,27 +288,7 @@ class ImmutableCollection implements IteratorAggregate, Countable, ArrayAccess, 
      */
     public function toArray(): array
     {
-        return $this->items->map(fn($item) => $item->toArray())->all();
-    }
-
-    /**
-     * Convert the collection to its JSON representation.
-     *
-     * @param int $options
-     */
-    public function toJson($options = 0): string
-    {
-        return json_encode($this->jsonSerialize(), $options | JSON_THROW_ON_ERROR);
-    }
-
-    /**
-     * Convert the object into something JSON serializable.
-     *
-     * @return array<int, array<string, mixed>>
-     */
-    public function jsonSerialize(): array
-    {
-        return $this->toArray();
+        return $this->map(fn($item) => $item->toArray())->all();
     }
 
     // =========================================================================
@@ -568,7 +298,7 @@ class ImmutableCollection implements IteratorAggregate, Countable, ArrayAccess, 
     /**
      * @throws ImmutableModelViolationException
      */
-    public function push(mixed ...$values): never
+    public function push(...$values): never
     {
         throw ImmutableModelViolationException::collectionMutation('push');
     }
@@ -576,7 +306,7 @@ class ImmutableCollection implements IteratorAggregate, Countable, ArrayAccess, 
     /**
      * @throws ImmutableModelViolationException
      */
-    public function put(mixed $key, mixed $value): never
+    public function put($key, $value): never
     {
         throw ImmutableModelViolationException::collectionMutation('put');
     }
@@ -584,7 +314,7 @@ class ImmutableCollection implements IteratorAggregate, Countable, ArrayAccess, 
     /**
      * @throws ImmutableModelViolationException
      */
-    public function forget(mixed $keys): never
+    public function forget($keys): never
     {
         throw ImmutableModelViolationException::collectionMutation('forget');
     }
@@ -592,7 +322,7 @@ class ImmutableCollection implements IteratorAggregate, Countable, ArrayAccess, 
     /**
      * @throws ImmutableModelViolationException
      */
-    public function pop(int $count = 1): never
+    public function pop($count = 1): never
     {
         throw ImmutableModelViolationException::collectionMutation('pop');
     }
@@ -600,7 +330,7 @@ class ImmutableCollection implements IteratorAggregate, Countable, ArrayAccess, 
     /**
      * @throws ImmutableModelViolationException
      */
-    public function shift(int $count = 1): never
+    public function shift($count = 1): never
     {
         throw ImmutableModelViolationException::collectionMutation('shift');
     }
@@ -608,7 +338,7 @@ class ImmutableCollection implements IteratorAggregate, Countable, ArrayAccess, 
     /**
      * @throws ImmutableModelViolationException
      */
-    public function pull(mixed $key, mixed $default = null): never
+    public function pull($key, $default = null): never
     {
         throw ImmutableModelViolationException::collectionMutation('pull');
     }
@@ -616,7 +346,7 @@ class ImmutableCollection implements IteratorAggregate, Countable, ArrayAccess, 
     /**
      * @throws ImmutableModelViolationException
      */
-    public function prepend(mixed $value, mixed $key = null): never
+    public function prepend($value, $key = null): never
     {
         throw ImmutableModelViolationException::collectionMutation('prepend');
     }
@@ -624,7 +354,7 @@ class ImmutableCollection implements IteratorAggregate, Countable, ArrayAccess, 
     /**
      * @throws ImmutableModelViolationException
      */
-    public function add(mixed $item): never
+    public function add($item): never
     {
         throw ImmutableModelViolationException::collectionMutation('add');
     }
@@ -632,7 +362,7 @@ class ImmutableCollection implements IteratorAggregate, Countable, ArrayAccess, 
     /**
      * @throws ImmutableModelViolationException
      */
-    public function splice(int $offset, ?int $length = null, mixed $replacement = []): never
+    public function splice($offset, $length = null, $replacement = []): never
     {
         throw ImmutableModelViolationException::collectionMutation('splice');
     }
@@ -643,5 +373,21 @@ class ImmutableCollection implements IteratorAggregate, Countable, ArrayAccess, 
     public function transform(callable $callback): never
     {
         throw ImmutableModelViolationException::collectionMutation('transform');
+    }
+
+    /**
+     * @throws ImmutableModelViolationException
+     */
+    public function offsetSet($key, $value): never
+    {
+        throw ImmutableModelViolationException::collectionMutation('offsetSet');
+    }
+
+    /**
+     * @throws ImmutableModelViolationException
+     */
+    public function offsetUnset($key): never
+    {
+        throw ImmutableModelViolationException::collectionMutation('offsetUnset');
     }
 }
