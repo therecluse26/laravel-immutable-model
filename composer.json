@@ -30,6 +30,18 @@
     },
     "minimum-stability": "stable",
     "prefer-stable": true,
+    "keywords": [
+        "laravel",
+        "eloquent",
+        "immutable",
+        "readonly",
+        "model"
+    ],
+    "homepage": "https://github.com/therecluse26/laravel-immutable-model",
+    "support": {
+        "issues": "https://github.com/therecluse26/laravel-immutable-model/issues",
+        "source": "https://github.com/therecluse26/laravel-immutable-model"
+    },
     "config": {
         "sort-packages": true
     }
