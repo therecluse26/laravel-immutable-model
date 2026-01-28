@@ -64,30 +64,37 @@ class HydrationBenchmark extends TestCase
         $this->assertTrue(true);
     }
 
+    public function test_benchmark_hydration_100000(): void
+    {
+        $this->runHydrationBenchmark(100000);
+        $this->assertTrue(true);
+    }
+
+
     public function test_benchmark_memory_usage(): void
     {
-        $count = 1000;
+        $count = 100000;
 
         // Benchmark Eloquent memory
         gc_collect_cycles();
-        $startMemory = memory_get_usage(true);
+        $startMemory = memory_get_usage(false);
         $eloquentModels = BenchmarkEloquentUser::query()->limit($count)->get();
-        $eloquentMemory = memory_get_usage(true) - $startMemory;
+        $eloquentMemory = memory_get_usage(false) - $startMemory;
         unset($eloquentModels);
 
         // Benchmark Immutable memory
         gc_collect_cycles();
-        $startMemory = memory_get_usage(true);
+        $startMemory = memory_get_usage(false);
         $immutableModels = BenchmarkImmutableUser::query()->limit($count)->get();
-        $immutableMemory = memory_get_usage(true) - $startMemory;
+        $immutableMemory = memory_get_usage(false) - $startMemory;
         unset($immutableModels);
 
         $this->outputResult('Memory Usage', [
             'count' => $count,
-            'eloquent_bytes' => $eloquentMemory,
-            'immutable_bytes' => $immutableMemory,
-            'eloquent_per_model' => round($eloquentMemory / $count, 2),
-            'immutable_per_model' => round($immutableMemory / $count, 2),
+            'eloquent_memory' => $this->formatBytes($eloquentMemory),
+            'immutable_memory' => $this->formatBytes($immutableMemory),
+            'eloquent_per_model' => $this->formatBytes((int) round($eloquentMemory / $count)),
+            'immutable_per_model' => $this->formatBytes((int) round($immutableMemory / $count)),
             'savings_percent' => $eloquentMemory > 0
                 ? round((1 - ($immutableMemory / $eloquentMemory)) * 100, 2)
                 : 0,
@@ -177,6 +184,20 @@ class HydrationBenchmark extends TestCase
         ]);
     }
 
+    private function formatBytes(int $bytes): string
+    {
+        $units = ['B', 'KB', 'MB', 'GB'];
+        $unitIndex = 0;
+        $value = (float) $bytes;
+
+        while ($value >= 1024 && $unitIndex < count($units) - 1) {
+            $value /= 1024;
+            $unitIndex++;
+        }
+
+        return round($value, 2) . ' ' . $units[$unitIndex];
+    }
+
     private function outputResult(string $name, array $data): void
     {
         $this->benchmarkResults[$name] = $data;
@@ -202,15 +223,24 @@ class HydrationBenchmark extends TestCase
             fwrite(STDERR, "╟─────────────────────────┼────────────┼───────────┼───────╢\n");
 
             foreach ($this->benchmarkResults as $name => $data) {
+                $name = substr($name, 0, 22);
+                $diff = $data['difference_percent'] ?? $data['savings_percent'] ?? 0;
+                $diffStr = ($diff >= 0 ? '+' : '') . $diff . '%';
+
                 if (isset($data['eloquent_ms'])) {
-                    $name = substr($name, 0, 22);
-                    $diff = $data['difference_percent'] ?? 0;
-                    $diffStr = ($diff >= 0 ? '+' : '') . $diff . '%';
                     fwrite(STDERR, sprintf(
                         "║ %-23s │ %8.2fms │ %7.2fms │ %5s ║\n",
                         $name,
                         $data['eloquent_ms'],
                         $data['immutable_ms'],
+                        $diffStr
+                    ));
+                } elseif (isset($data['eloquent_memory'])) {
+                    fwrite(STDERR, sprintf(
+                        "║ %-23s │ %10s │ %9s │ %5s ║\n",
+                        $name,
+                        $data['eloquent_memory'],
+                        $data['immutable_memory'],
                         $diffStr
                     ));
                 }
