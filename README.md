@@ -8,8 +8,8 @@ ImmutableModel provides first-class, enforceable immutable read-only models for 
 
 - **Enforce architectural boundaries**: Prevent accidental writes at the model level
 - **Eliminate mutation bugs**: Any write attempt throws immediately - no silent failures
-- **Improved performance**: 41-72% faster hydration, 95-96% faster eager loading
-- **Lower memory footprint**: 41% less memory (~1 KB vs ~1.65 KB per model)
+- **Improved performance**: 47-74% faster hydration, 25-70% faster eager loading
+- **Lower memory footprint**: ~41% less memory (~1 KB vs ~1.65 KB per model)
 - **Familiar API**: Eloquent-compatible read semantics for easy adoption
 - **Type safety**: Strict immutability enforced at runtime
 
@@ -308,10 +308,10 @@ Benchmarks show ImmutableModel is significantly faster for read operations:
 
 | Rows | Eloquent | ImmutableModel | Improvement |
 |------|----------|----------------|-------------|
-| 100 | 0.29ms | 0.09ms | -70% |
-| 1,000 | 2.79ms | 0.78ms | -72% |
-| 10,000 | 37.17ms | 11.44ms | -69% |
-| 100,000 | 458.90ms | 270.82ms | -41% |
+| 100 | 0.30ms | 0.09ms | -70% |
+| 1,000 | 3.09ms | 0.80ms | -74% |
+| 10,000 | 34.27ms | 9.37ms | -73% |
+| 100,000 | 447.29ms | 236.63ms | -47% |
 
 ### Memory Usage
 
@@ -324,11 +324,11 @@ Benchmarks show ImmutableModel is significantly faster for read operations:
 
 ### Eager Loading (10 posts per user)
 
-| Users | Total Models | Eloquent | ImmutableModel | Improvement |
-|-------|--------------|----------|----------------|-------------|
-| 10 | 110 | 1.94ms | 0.09ms | -95% |
-| 100 | 1,100 | 7.67ms | 0.28ms | -96% |
-| 1,000 | 11,000 | 69.36ms | 2.45ms | -96% |
+| Users | Models | Eloquent | Immutable | Time Δ | Eloquent Mem | Immutable Mem | Mem Δ |
+|-------|--------|----------|-----------|--------|--------------|---------------|-------|
+| 10 | 110 | 1.68ms | 1.27ms | -25% | 184 KB | 105 KB | 43% |
+| 100 | 1,100 | 5.75ms | 2.23ms | -61% | 1.76 MB | 1.02 MB | 42% |
+| 1,000 | 11,000 | 64.22ms | 19.34ms | -70% | 17.53 MB | 10.23 MB | 42% |
 
 ## Use Cases
 

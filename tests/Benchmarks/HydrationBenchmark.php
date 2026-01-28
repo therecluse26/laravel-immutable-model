@@ -151,6 +151,7 @@ class HydrationBenchmark extends TestCase
      */
     public static function eagerLoadingCountProvider(): array
     {
+        // Note: Posts are only seeded for first 1000 users (10 posts each)
         return [
             '10 users' => [10],
             '100 users' => [100],
@@ -169,7 +170,7 @@ class HydrationBenchmark extends TestCase
         BenchmarkEloquentUser::with('posts')->limit(10)->get();
         BenchmarkImmutableUser::with('posts')->limit(10)->get();
 
-        // Benchmark Eloquent eager loading
+        // Benchmark Eloquent eager loading - time
         $eloquentTimes = [];
         for ($i = 0; $i < $iterations; $i++) {
             $start = hrtime(true);
@@ -178,7 +179,7 @@ class HydrationBenchmark extends TestCase
         }
         $eloquentAvg = array_sum($eloquentTimes) / count($eloquentTimes);
 
-        // Benchmark Immutable eager loading
+        // Benchmark Immutable eager loading - time
         $immutableTimes = [];
         for ($i = 0; $i < $iterations; $i++) {
             $start = hrtime(true);
@@ -187,6 +188,20 @@ class HydrationBenchmark extends TestCase
         }
         $immutableAvg = array_sum($immutableTimes) / count($immutableTimes);
 
+        // Benchmark Immutable eager loading - memory FIRST to avoid memory reuse bias
+        gc_collect_cycles();
+        $startMemory = memory_get_usage(false);
+        $immutableModels = BenchmarkImmutableUser::with('posts')->limit($count)->get();
+        $immutableMemory = memory_get_usage(false) - $startMemory;
+        unset($immutableModels);
+
+        // Benchmark Eloquent eager loading - memory
+        gc_collect_cycles();
+        $startMemory = memory_get_usage(false);
+        $eloquentModels = BenchmarkEloquentUser::with('posts')->limit($count)->get();
+        $eloquentMemory = memory_get_usage(false) - $startMemory;
+        unset($eloquentModels);
+
         $totalModels = $count + ($count * 10); // users + posts (10 per user)
 
         $this->outputResult("Eager Load ({$count} users)", [
@@ -194,8 +209,13 @@ class HydrationBenchmark extends TestCase
             'total_models' => $totalModels,
             'eloquent_ms' => round($eloquentAvg, 2),
             'immutable_ms' => round($immutableAvg, 2),
-            'difference_percent' => $eloquentAvg > 0
+            'time_diff_percent' => $eloquentAvg > 0
                 ? round((($immutableAvg - $eloquentAvg) / $eloquentAvg) * 100, 2)
+                : 0,
+            'eloquent_memory' => $this->formatBytes($eloquentMemory),
+            'immutable_memory' => $this->formatBytes($immutableMemory),
+            'memory_savings_percent' => $eloquentMemory > 0
+                ? round((1 - ($immutableMemory / $eloquentMemory)) * 100, 2)
                 : 0,
         ]);
 
@@ -286,7 +306,11 @@ class HydrationBenchmark extends TestCase
 
             foreach ($this->benchmarkResults as $name => $data) {
                 $name = substr($name, 0, 22);
-                $diff = $data['difference_percent'] ?? $data['savings_percent'] ?? 0;
+                $diff = $data['difference_percent']
+                    ?? $data['time_diff_percent']
+                    ?? $data['savings_percent']
+                    ?? $data['memory_savings_percent']
+                    ?? 0;
                 $diffStr = ($diff >= 0 ? '+' : '') . $diff . '%';
 
                 if (isset($data['eloquent_ms'])) {
@@ -363,7 +387,7 @@ class BenchmarkImmutableUser extends ImmutableModel
 
     public function posts()
     {
-        return $this->hasMany(BenchmarkImmutablePost::class);
+        return $this->hasMany(BenchmarkImmutablePost::class, 'user_id', 'id');
     }
 }
 
@@ -380,6 +404,6 @@ class BenchmarkImmutablePost extends ImmutableModel
 
     public function user()
     {
-        return $this->belongsTo(BenchmarkImmutableUser::class);
+        return $this->belongsTo(BenchmarkImmutableUser::class, 'user_id', 'id');
     }
 }
