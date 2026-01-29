@@ -42,61 +42,70 @@ class ImmutabilityTest extends TestCase
     }
 
     // =========================================================================
-    // ATTRIBUTE MUTATION TESTS
+    // IN-MEMORY MUTATION TESTS (allowed for common patterns)
     // =========================================================================
 
-    public function test_setting_attribute_via_property_throws(): void
+    public function test_setting_attribute_via_property_works(): void
     {
         $user = ImmutableUser::find(1);
-
-        $this->expectException(ImmutableModelViolationException::class);
-        $this->expectExceptionMessage('Cannot set attribute [name]');
+        $originalName = $user->name;
 
         $user->name = 'New Name';
+
+        $this->assertEquals('New Name', $user->name);
+        $this->assertNotEquals($originalName, $user->name);
     }
 
-    public function test_setting_attribute_via_array_access_throws(): void
+    public function test_setting_attribute_via_array_access_works(): void
     {
         $user = ImmutableUser::find(1);
-
-        $this->expectException(ImmutableModelViolationException::class);
-        $this->expectExceptionMessage('Cannot set attribute [name]');
 
         $user['name'] = 'New Name';
+
+        $this->assertEquals('New Name', $user['name']);
     }
 
-    public function test_unsetting_attribute_via_unset_throws(): void
+    public function test_unsetting_attribute_via_unset_works(): void
     {
         $user = ImmutableUser::find(1);
-
-        $this->expectException(ImmutableModelViolationException::class);
-        $this->expectExceptionMessage('Cannot set attribute [name]');
 
         unset($user->name);
+
+        $this->assertNull($user->getRawAttribute('name'));
     }
 
-    public function test_unsetting_attribute_via_array_access_throws(): void
+    public function test_unsetting_attribute_via_array_access_works(): void
     {
         $user = ImmutableUser::find(1);
-
-        $this->expectException(ImmutableModelViolationException::class);
-        $this->expectExceptionMessage('Cannot set attribute [name]');
 
         unset($user['name']);
+
+        $this->assertNull($user->getRawAttribute('name'));
     }
 
-    // =========================================================================
-    // RELATION MUTATION TESTS
-    // =========================================================================
-
-    public function test_setting_relation_throws(): void
+    public function test_can_add_computed_attributes(): void
     {
         $user = ImmutableUser::find(1);
 
-        $this->expectException(ImmutableModelViolationException::class);
-        $this->expectExceptionMessage('Cannot set relation [posts]');
+        // Common pattern: adding computed properties for API responses
+        $user->computed_field = 'computed value';
+
+        $this->assertEquals('computed value', $user->computed_field);
+        $this->assertArrayHasKey('computed_field', $user->toArray());
+    }
+
+    // =========================================================================
+    // RELATION MUTATION TESTS (in-memory allowed)
+    // =========================================================================
+
+    public function test_setting_relation_works(): void
+    {
+        $user = ImmutableUser::find(1);
 
         $user->setRelation('posts', new EloquentCollection([]));
+
+        $this->assertTrue($user->relationLoaded('posts'));
+        $this->assertCount(0, $user->getRelation('posts'));
     }
 
     // =========================================================================

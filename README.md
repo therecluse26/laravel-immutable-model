@@ -2,16 +2,29 @@
 
 **An Eloquent-compatible, read-only model kernel for Laravel 11+**
 
-ImmutableModel provides first-class, enforceable immutable read-only models for Laravel applications. It's perfect for SQL views, read-only tables, denormalized projections, and as a CQRS read-side primitive.
+ImmutableModel provides first-class, enforceable read-only models for Laravel applications. It's perfect for SQL views, read-only tables, denormalized projections, and as a CQRS read-side primitive.
+
+## What "Immutable" Means
+
+ImmutableModel enforces **database immutability**, not strict object immutability:
+
+| Operation | Allowed? | Example |
+|-----------|----------|---------|
+| Read from database | ✅ Yes | `User::find(1)`, `User::where(...)->get()` |
+| In-memory attribute changes | ✅ Yes | `$user->computed_field = 'value'` |
+| Database persistence | ❌ Throws | `$user->save()`, `$user->update()`, `$user->delete()` |
+| Static write methods | ❌ Throws | `User::create()`, `User::insert()` |
+
+This design prevents accidental database writes while remaining compatible with common Laravel patterns like adding computed properties for API responses, serialization, and working with collections.
 
 ## Why ImmutableModel?
 
-- **Enforce architectural boundaries**: Prevent accidental writes at the model level
-- **Eliminate mutation bugs**: Any write attempt throws immediately - no silent failures
+- **Enforce architectural boundaries**: Prevent accidental database writes at the model level
+- **Eliminate persistence bugs**: Any save/update/delete attempt throws immediately - no silent failures
 - **Improved performance**: 47-74% faster hydration, 25-70% faster eager loading
 - **Lower memory footprint**: ~41% less memory (~1 KB vs ~1.65 KB per model)
 - **Familiar API**: Eloquent-compatible read semantics for easy adoption
-- **Type safety**: Strict immutability enforced at runtime
+- **Laravel ecosystem compatible**: Works with API Resources, serialization, and other common patterns
 
 ## Installation
 
@@ -46,9 +59,14 @@ $users = UserView::where('active', true)->get();
 $user = UserView::find(1);
 $user = UserView::with('posts')->first();
 
-// But writes are impossible
-$user->name = 'New Name';  // Throws ImmutableModelViolationException
+// In-memory changes are allowed (for computed fields, API responses, etc.)
+$user->computed_field = 'some value';  // Works fine
+$user->name = 'Modified';              // Works fine (in-memory only)
+
+// But database persistence is blocked
 $user->save();              // Throws ImmutableModelViolationException
+$user->update([...]);       // Throws ImmutableModelViolationException
+$user->delete();            // Throws ImmutableModelViolationException
 UserView::create([...]);    // Throws ImmutableModelViolationException
 ```
 
@@ -191,7 +209,7 @@ Custom casters must implement `Illuminate\Contracts\Database\Eloquent\CastsAttri
 
 ### Collections
 
-Query results return Laravel's standard `Eloquent\Collection`. All collection methods work normally - immutability is enforced on the **models and database operations**, not on in-memory collection manipulation:
+Query results return Laravel's standard `Eloquent\Collection`. All collection methods work normally - immutability is enforced on **database operations**, not on in-memory manipulation:
 
 ```php
 $users = User::all();
@@ -204,9 +222,13 @@ $mapped = $users->map(fn($u) => $u->toArray());
 $users->push($newUser);     // Works - this is in-memory only
 $users->transform(fn($u) => $u);  // Works
 
-// Immutability is on the MODELS, not the collection
-$users->first()->name = 'New';  // Throws ImmutableModelViolationException
-$users->first()->save();        // Throws ImmutableModelViolationException
+// In-memory model changes are allowed
+$users->first()->name = 'New';       // Works (in-memory only)
+$users->first()->computed = 'value'; // Works (add computed fields)
+
+// But database persistence is blocked
+$users->first()->save();   // Throws ImmutableModelViolationException
+$users->first()->delete(); // Throws ImmutableModelViolationException
 ```
 
 ### Pagination
@@ -334,8 +356,8 @@ ImmutableModel is ideal for:
 - **Read Replicas**: Query read-only database replicas safely
 - **CQRS Read Models**: Enforce read-side immutability in CQRS architectures
 - **Denormalized Projections**: Work with pre-computed, read-only data
-- **API Responses**: Ensure response data cannot be accidentally modified
-- **Caching**: Safely cache model instances knowing they won't change
+- **API Responses**: Build response data with computed fields, knowing it won't accidentally persist
+- **Architectural Boundaries**: Enforce that certain models are never written to from application code
 
 ## Not Intended For
 
@@ -348,7 +370,7 @@ ImmutableModel is ideal for:
 
 | Exception | When Thrown |
 |-----------|-------------|
-| `ImmutableModelViolationException` | Any write/mutation attempt |
+| `ImmutableModelViolationException` | Any database persistence attempt (save, update, delete, create, etc.) |
 | `ImmutableModelConfigurationException` | Invalid model configuration |
 
 ## Contributing

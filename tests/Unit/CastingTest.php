@@ -257,6 +257,86 @@ class CastingTest extends TestCase
     }
 
     // =========================================================================
+    // LARAVEL 11 METHOD-BASED CASTS
+    // =========================================================================
+
+    public function test_method_based_casts_are_applied(): void
+    {
+        // MethodCastModel uses the casts() method instead of $casts property
+        $model = \Brighten\ImmutableModel\Tests\Models\MethodCastModel::fromRow([
+            'id' => 1,
+            'name' => 'Test',
+            'email' => 'test@example.com',
+            'settings' => json_encode(['key' => 'value']),
+            'email_verified_at' => '2024-01-15 10:30:00',
+            'created_at' => '2024-01-01 00:00:00',
+            'updated_at' => '2024-01-01 00:00:00',
+        ]);
+
+        // settings should be cast to array
+        $this->assertIsArray($model->settings);
+        $this->assertEquals(['key' => 'value'], $model->settings);
+
+        // email_verified_at should be cast to Carbon
+        $this->assertInstanceOf(Carbon::class, $model->email_verified_at);
+        $this->assertEquals('2024-01-15', $model->email_verified_at->format('Y-m-d'));
+    }
+
+    public function test_method_based_casts_work_with_database_query(): void
+    {
+        // This is the CRITICAL test - ensures the full query path works with method-based casts
+        // This matches the user's scenario: querying a database with method-based casts
+        \Brighten\ImmutableModel\Tests\Models\MethodCastModel::setConnectionResolver($this->app['db']);
+
+        $model = \Brighten\ImmutableModel\Tests\Models\MethodCastModel::find(1);
+
+        // Verify the model was found and attributes are NOT null
+        $this->assertNotNull($model, 'Model should be found');
+        $this->assertNotNull($model->id, 'ID should not be null');
+        $this->assertNotNull($model->name, 'Name should not be null');
+        $this->assertNotNull($model->email, 'Email should not be null');
+
+        // Verify actual values
+        $this->assertEquals(1, $model->id);
+        $this->assertEquals('John', $model->name);
+        $this->assertEquals('john@example.com', $model->email);
+
+        // Verify method-based casts are applied
+        $this->assertIsArray($model->settings);
+        $this->assertEquals(['theme' => 'dark', 'notifications' => true], $model->settings);
+        $this->assertInstanceOf(Carbon::class, $model->email_verified_at);
+    }
+
+    public function test_method_based_casts_work_with_get_all(): void
+    {
+        // Test that getting multiple records works with method-based casts
+        \Brighten\ImmutableModel\Tests\Models\MethodCastModel::setConnectionResolver($this->app['db']);
+
+        $models = \Brighten\ImmutableModel\Tests\Models\MethodCastModel::all();
+
+        $this->assertCount(1, $models);
+        $model = $models->first();
+
+        // Verify attributes are NOT null
+        $this->assertNotNull($model->id);
+        $this->assertNotNull($model->name);
+        $this->assertEquals('John', $model->name);
+    }
+
+    public function test_method_based_casts_merged_with_property_casts(): void
+    {
+        // Get the casts from MethodCastModel
+        $model = new \Brighten\ImmutableModel\Tests\Models\MethodCastModel();
+        $casts = $model->getCasts();
+
+        // Should have the casts defined in the casts() method
+        $this->assertArrayHasKey('settings', $casts);
+        $this->assertArrayHasKey('email_verified_at', $casts);
+        $this->assertEquals('array', $casts['settings']);
+        $this->assertEquals('datetime', $casts['email_verified_at']);
+    }
+
+    // =========================================================================
     // NULL HANDLING
     // =========================================================================
 

@@ -567,23 +567,25 @@ class CollectionTest extends TestCase
     // MODELS WITHIN COLLECTIONS REMAIN IMMUTABLE
     // =========================================================================
 
-    public function test_model_in_collection_attribute_mutation_throws(): void
+    public function test_model_in_collection_attribute_mutation_works(): void
     {
         $users = ImmutableUser::all();
-
-        $this->expectException(ImmutableModelViolationException::class);
-        $this->expectExceptionMessage('Cannot set attribute');
+        $originalName = $users->first()->name;
 
         $users->first()->name = 'New Name';
+
+        $this->assertEquals('New Name', $users->first()->name);
+        $this->assertNotEquals($originalName, $users->first()->name);
     }
 
-    public function test_model_in_collection_after_transform_remains_immutable(): void
+    public function test_model_in_collection_after_transform_allows_mutation(): void
     {
         $users = ImmutableUser::all();
         $users->transform(fn ($user) => $user);
 
-        $this->expectException(ImmutableModelViolationException::class);
         $users->first()->name = 'New Name';
+
+        $this->assertEquals('New Name', $users->first()->name);
     }
 
     public function test_model_in_collection_persistence_throws(): void
@@ -596,13 +598,14 @@ class CollectionTest extends TestCase
         $users->first()->save();
     }
 
-    public function test_model_in_collection_after_push_remains_immutable(): void
+    public function test_model_in_collection_after_push_allows_mutation(): void
     {
         $users = ImmutableUser::all();
         $newUser = ImmutableUser::find(1);
         $users->push($newUser);
 
-        $this->expectException(ImmutableModelViolationException::class);
         $users->last()->name = 'New Name';
+
+        $this->assertEquals('New Name', $users->last()->name);
     }
 }

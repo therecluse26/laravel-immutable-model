@@ -144,13 +144,24 @@ class RelationEdgeCasesTest extends TestCase
         $this->assertInstanceOf(EloquentCollection::class, $posts);
     }
 
-    public function test_relation_collection_items_are_immutable(): void
+    public function test_relation_collection_items_allow_in_memory_mutation(): void
+    {
+        $user = ImmutableUser::find(1);
+        $post = $user->posts->first();
+
+        // In-memory mutation is allowed
+        $post->title = 'New Title';
+
+        $this->assertEquals('New Title', $post->title);
+    }
+
+    public function test_relation_collection_items_cannot_be_saved(): void
     {
         $user = ImmutableUser::find(1);
         $post = $user->posts->first();
 
         $this->expectException(ImmutableModelViolationException::class);
-        $post->title = 'New Title';
+        $post->save();
     }
 
     // =========================================================================

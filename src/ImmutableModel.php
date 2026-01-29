@@ -409,6 +409,30 @@ abstract class ImmutableModel implements ArrayAccess, JsonSerializable, Arrayabl
     }
 
     /**
+     * Create a collection of models from plain arrays / objects.
+     *
+     * This method is required for compatibility with Laravel's Eloquent Builder,
+     * which calls hydrate() when loading models via getModels().
+     *
+     * @param iterable<array<string, mixed>|stdClass> $items
+     */
+    public static function hydrate(iterable $items, ?string $connection = null): EloquentCollection
+    {
+        $instance = new static();
+
+        if ($connection !== null) {
+            $instance->connection = $connection;
+        }
+
+        $models = [];
+        foreach ($items as $item) {
+            $models[] = $instance->newFromBuilder($item, $connection);
+        }
+
+        return $instance->newCollection($models);
+    }
+
+    /**
      * Begin querying the model.
      */
     public static function query(): ImmutableQueryBuilder
@@ -587,11 +611,26 @@ abstract class ImmutableModel implements ArrayAccess, JsonSerializable, Arrayabl
     /**
      * Get the casts array.
      *
+     * Supports both property-based casts (protected array $casts) and
+     * Laravel 11's method-based casts (protected function casts(): array).
+     *
      * @return array<string, string|class-string>
      */
     public function getCasts(): array
     {
-        return $this->casts;
+        $casts = $this->casts;
+
+        // Support Laravel 11's method-based casts
+        if (method_exists($this, 'casts') && is_callable([$this, 'casts'])) {
+            // Use reflection to check if casts() is a real method defined in a subclass
+            // (not this base class method check itself)
+            $reflection = new \ReflectionMethod($this, 'casts');
+            if ($reflection->getDeclaringClass()->getName() !== self::class) {
+                $casts = array_merge($casts, $this->casts());
+            }
+        }
+
+        return $casts;
     }
 
     /**
@@ -634,6 +673,48 @@ abstract class ImmutableModel implements ArrayAccess, JsonSerializable, Arrayabl
     public function getRawAttribute(string $key): mixed
     {
         return $this->attributes[$key] ?? null;
+    }
+
+    /**
+     * Get the model's original attribute values.
+     *
+     * Since ImmutableModel cannot be modified, the original values
+     * are always identical to the current values.
+     *
+     * @param string|null $key If null, returns all original attributes
+     * @param mixed $default Default value if key doesn't exist
+     */
+    public function getOriginal(?string $key = null, mixed $default = null): mixed
+    {
+        if ($key === null) {
+            // Return all attributes with casting applied
+            $result = [];
+            foreach (array_keys($this->attributes) as $attrKey) {
+                $result[$attrKey] = $this->getAttributeValue($attrKey);
+            }
+
+            return $result;
+        }
+
+        return $this->getAttributeValue($key) ?? $default;
+    }
+
+    /**
+     * Get the model's raw original attribute values (without casting).
+     *
+     * Since ImmutableModel cannot be modified, the original values
+     * are always identical to the current values.
+     *
+     * @param string|null $key If null, returns all raw original attributes
+     * @param mixed $default Default value if key doesn't exist
+     */
+    public function getRawOriginal(?string $key = null, mixed $default = null): mixed
+    {
+        if ($key === null) {
+            return $this->attributes;
+        }
+
+        return $this->attributes[$key] ?? $default;
     }
 
     /**
@@ -728,25 +809,27 @@ abstract class ImmutableModel implements ArrayAccess, JsonSerializable, Arrayabl
     }
 
     /**
-     * Set a relation internally during hydration (not exposed publicly).
+     * Set a relation on the model.
      *
-     * @internal
+     * While ImmutableModel prevents database persistence, in-memory relation
+     * setting is allowed for common patterns like eager loading and API responses.
      */
-    final public function setRelation(string $relation, mixed $value): never
+    public function setRelation(string $relation, mixed $value): static
     {
-        throw ImmutableModelViolationException::relationMutation($relation);
+        $this->relations[$relation] = $value;
+
+        return $this;
     }
 
     /**
      * Internal method to set relation during hydration.
      *
      * @internal
+     * @deprecated Use setRelation() instead
      */
     public function setRelationInternal(string $relation, mixed $value): static
     {
-        $this->relations[$relation] = $value;
-
-        return $this;
+        return $this->setRelation($relation, $value);
     }
 
     /**
@@ -1385,13 +1468,15 @@ abstract class ImmutableModel implements ArrayAccess, JsonSerializable, Arrayabl
     }
 
     /**
-     * Dynamically set attributes on the model (throws).
+     * Dynamically set attributes on the model.
      *
-     * @throws ImmutableModelViolationException
+     * While ImmutableModel prevents database persistence, in-memory attribute
+     * mutation is allowed for common patterns like adding computed properties
+     * for API responses.
      */
-    public function __set(string $key, mixed $value): never
+    public function __set(string $key, mixed $value): void
     {
-        throw ImmutableModelViolationException::attributeMutation($key);
+        $this->attributes[$key] = $value;
     }
 
     /**
@@ -1405,13 +1490,14 @@ abstract class ImmutableModel implements ArrayAccess, JsonSerializable, Arrayabl
     }
 
     /**
-     * Unset an attribute on the model (throws).
+     * Unset an attribute on the model.
      *
-     * @throws ImmutableModelViolationException
+     * While ImmutableModel prevents database persistence, in-memory attribute
+     * mutation is allowed for common patterns.
      */
-    public function __unset(string $key): never
+    public function __unset(string $key): void
     {
-        throw ImmutableModelViolationException::attributeMutation($key);
+        unset($this->attributes[$key]);
     }
 
     /**
@@ -1435,26 +1521,30 @@ abstract class ImmutableModel implements ArrayAccess, JsonSerializable, Arrayabl
     }
 
     /**
-     * Set the value for a given offset (throws).
+     * Set the value for a given offset.
+     *
+     * While ImmutableModel prevents database persistence, in-memory attribute
+     * mutation is allowed for common patterns.
      *
      * @param mixed $offset
      * @param mixed $value
-     * @throws ImmutableModelViolationException
      */
-    public function offsetSet(mixed $offset, mixed $value): never
+    public function offsetSet(mixed $offset, mixed $value): void
     {
-        throw ImmutableModelViolationException::attributeMutation($offset);
+        $this->attributes[$offset] = $value;
     }
 
     /**
-     * Unset the value for a given offset (throws).
+     * Unset the value for a given offset.
+     *
+     * While ImmutableModel prevents database persistence, in-memory attribute
+     * mutation is allowed for common patterns.
      *
      * @param mixed $offset
-     * @throws ImmutableModelViolationException
      */
-    public function offsetUnset(mixed $offset): never
+    public function offsetUnset(mixed $offset): void
     {
-        throw ImmutableModelViolationException::attributeMutation($offset);
+        unset($this->attributes[$offset]);
     }
 
     /**

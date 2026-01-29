@@ -153,4 +153,113 @@ class HydrationTest extends TestCase
         $this->assertArrayHasKey('email', $attributes);
     }
 
+    // =========================================================================
+    // HYDRATE METHOD TESTS
+    // =========================================================================
+
+    public function test_hydrate_creates_collection_from_arrays(): void
+    {
+        $items = [
+            ['id' => 1, 'name' => 'User 1', 'email' => 'user1@example.com', 'settings' => null, 'email_verified_at' => null, 'created_at' => '2024-01-01 00:00:00', 'updated_at' => '2024-01-01 00:00:00'],
+            ['id' => 2, 'name' => 'User 2', 'email' => 'user2@example.com', 'settings' => null, 'email_verified_at' => null, 'created_at' => '2024-01-01 00:00:00', 'updated_at' => '2024-01-01 00:00:00'],
+        ];
+
+        $users = ImmutableUser::hydrate($items);
+
+        $this->assertInstanceOf(EloquentCollection::class, $users);
+        $this->assertCount(2, $users);
+        $this->assertInstanceOf(ImmutableUser::class, $users[0]);
+        $this->assertEquals('User 1', $users[0]->name);
+        $this->assertEquals('User 2', $users[1]->name);
+    }
+
+    public function test_hydrate_creates_collection_from_stdclass(): void
+    {
+        $item1 = new stdClass();
+        $item1->id = 1;
+        $item1->name = 'User 1';
+        $item1->email = 'user1@example.com';
+
+        $item2 = new stdClass();
+        $item2->id = 2;
+        $item2->name = 'User 2';
+        $item2->email = 'user2@example.com';
+
+        $users = ImmutableUser::hydrate([$item1, $item2]);
+
+        $this->assertCount(2, $users);
+        $this->assertEquals('User 1', $users[0]->name);
+    }
+
+    public function test_hydrate_with_connection(): void
+    {
+        $items = [
+            ['id' => 1, 'name' => 'User 1', 'email' => 'user1@example.com'],
+        ];
+
+        $users = ImmutableUser::hydrate($items, 'sqlite');
+
+        $this->assertCount(1, $users);
+        $this->assertEquals('sqlite', $users[0]->getConnectionName());
+    }
+
+    // =========================================================================
+    // GET ORIGINAL TESTS
+    // =========================================================================
+
+    public function test_get_raw_original_returns_single_attribute(): void
+    {
+        $user = ImmutableUser::find(1);
+
+        $this->assertEquals('John Doe', $user->getRawOriginal('name'));
+        $this->assertEquals('john@example.com', $user->getRawOriginal('email'));
+    }
+
+    public function test_get_raw_original_returns_all_attributes(): void
+    {
+        $user = ImmutableUser::find(1);
+        $original = $user->getRawOriginal();
+
+        $this->assertIsArray($original);
+        $this->assertArrayHasKey('id', $original);
+        $this->assertArrayHasKey('name', $original);
+        $this->assertEquals('John Doe', $original['name']);
+    }
+
+    public function test_get_raw_original_returns_default_for_missing(): void
+    {
+        $user = ImmutableUser::find(1);
+
+        $this->assertNull($user->getRawOriginal('nonexistent'));
+        $this->assertEquals('default', $user->getRawOriginal('nonexistent', 'default'));
+    }
+
+    public function test_get_original_returns_single_attribute(): void
+    {
+        $user = ImmutableUser::find(1);
+
+        // getOriginal returns cast values
+        $this->assertEquals('John Doe', $user->getOriginal('name'));
+    }
+
+    public function test_get_original_returns_all_attributes_with_casting(): void
+    {
+        $user = ImmutableUser::find(1);
+        $original = $user->getOriginal();
+
+        $this->assertIsArray($original);
+        $this->assertArrayHasKey('id', $original);
+        $this->assertArrayHasKey('name', $original);
+        // email_verified_at should be cast to Carbon
+        $this->assertInstanceOf(\Carbon\Carbon::class, $original['email_verified_at']);
+    }
+
+    public function test_get_original_returns_default_for_missing(): void
+    {
+        $user = ImmutableUser::find(1);
+
+        $this->assertNull($user->getOriginal('nonexistent'));
+        $this->assertEquals('default', $user->getOriginal('nonexistent', 'default'));
+    }
+
 }

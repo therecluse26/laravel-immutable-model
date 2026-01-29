@@ -421,15 +421,16 @@ class MutableRelationshipTest extends TestCase
     // ImmutableModels loaded through Eloquent relations remain immutable
     // =========================================================================
 
-    public function test_immutable_models_from_eloquent_relation_cannot_be_modified(): void
+    public function test_immutable_models_from_eloquent_relation_can_be_mutated_in_memory(): void
     {
         $category = Category::find(1);
         $posts = $category->posts;
         $firstPost = $posts->first();
 
-        $this->expectException(ImmutableModelViolationException::class);
-
+        // In-memory mutation is allowed
         $firstPost->title = 'Changed Title';
+
+        $this->assertEquals('Changed Title', $firstPost->title);
     }
 
     public function test_immutable_models_from_eloquent_relation_cannot_be_saved(): void
@@ -443,21 +444,22 @@ class MutableRelationshipTest extends TestCase
         $firstPost->save();
     }
 
-    public function test_immutable_models_from_eager_loaded_relation_cannot_be_modified(): void
+    public function test_immutable_models_from_eager_loaded_relation_can_be_mutated_in_memory(): void
     {
         $category = Category::with('posts')->find(1);
         $firstPost = $category->posts->first();
 
-        $this->expectException(ImmutableModelViolationException::class);
-
+        // In-memory mutation is allowed
         $firstPost->title = 'Changed Title';
+
+        $this->assertEquals('Changed Title', $firstPost->title);
     }
 
     // =========================================================================
     // INVERSE DIRECTION: Mutable Parent Remains Mutable
     // =========================================================================
 
-    public function test_mutable_parent_can_be_modified_while_immutable_children_cannot(): void
+    public function test_mutable_parent_can_be_modified_and_immutable_children_allow_in_memory_changes(): void
     {
         $category = Category::find(1);
 
@@ -468,9 +470,23 @@ class MutableRelationshipTest extends TestCase
         $category->name = 'Modified Category';
         $this->assertEquals('Modified Category', $category->name);
 
-        // But children are immutable
+        // Children allow in-memory changes
+        $posts->first()->title = 'Changed Title';
+        $this->assertEquals('Changed Title', $posts->first()->title);
+    }
+
+    public function test_immutable_children_cannot_be_persisted(): void
+    {
+        $category = Category::find(1);
+        $posts = $category->posts;
+
+        // In-memory mutation is fine
+        $posts->first()->title = 'Changed Title';
+        $this->assertEquals('Changed Title', $posts->first()->title);
+
+        // But persistence is blocked
         $this->expectException(ImmutableModelViolationException::class);
-        $posts->first()->title = 'Cannot Change';
+        $posts->first()->save();
     }
 
     public function test_mutable_parent_can_be_saved_after_loading_immutable_relations(): void

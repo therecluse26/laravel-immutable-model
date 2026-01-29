@@ -282,8 +282,9 @@ class ImmutableQueryBuilder extends Builder
      */
     public function get($columns = ['*']): EloquentCollection
     {
+        // Apply column selection to the base query
         if ($columns !== ['*']) {
-            $this->select($columns);
+            $this->query->select($columns);
         }
 
         $results = $this->query->get();
@@ -310,8 +311,9 @@ class ImmutableQueryBuilder extends Builder
      */
     public function first($columns = ['*']): ?ImmutableModel
     {
+        // Apply column selection to the base query
         if ($columns !== ['*']) {
-            $this->select($columns);
+            $this->query->select($columns);
         }
 
         $row = $this->query->first();

@@ -263,13 +263,23 @@ class RelationshipTest extends TestCase
     // RELATION IMMUTABILITY
     // =========================================================================
 
-    public function test_related_immutable_models_are_immutable(): void
+    public function test_related_immutable_models_allow_in_memory_mutation(): void
+    {
+        $post = ImmutablePost::with('user')->find(1);
+
+        // In-memory mutation is allowed
+        $post->user->name = 'Changed';
+
+        $this->assertEquals('Changed', $post->user->name);
+    }
+
+    public function test_related_immutable_models_cannot_be_saved(): void
     {
         $post = ImmutablePost::with('user')->find(1);
 
         $this->expectException(\Brighten\ImmutableModel\Exceptions\ImmutableModelViolationException::class);
 
-        $post->user->name = 'Changed';
+        $post->user->save();
     }
 
     public function test_relation_loaded_returns_correct_state(): void
