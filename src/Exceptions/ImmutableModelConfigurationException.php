@@ -47,4 +47,15 @@ class ImmutableModelConfigurationException extends RuntimeException
     {
         return new self("Immutable model [{$class}] must define a \$table property.");
     }
+
+    /**
+     * Create exception for missing connection resolver.
+     */
+    public static function missingConnectionResolver(): self
+    {
+        return new self(
+            'No database connection resolver has been configured. '
+            . 'Ensure Laravel has booted or call ImmutableModel::setConnectionResolver().'
+        );
+    }
 }

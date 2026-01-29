@@ -22,6 +22,7 @@ use Brighten\ImmutableModel\Scopes\ImmutableModelScope;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Contracts\Support\Jsonable;
 use Illuminate\Database\ConnectionResolverInterface;
+use Illuminate\Database\Eloquent\Model as EloquentModel;
 use Illuminate\Support\Str;
 use JsonSerializable;
 use stdClass;
@@ -1464,10 +1465,19 @@ abstract class ImmutableModel implements ArrayAccess, JsonSerializable, Arrayabl
 
     /**
      * Resolve a connection instance.
+     *
+     * Falls back to Eloquent's connection resolver if none has been explicitly set,
+     * allowing ImmutableModel to work alongside Eloquent without additional configuration.
      */
     public static function resolveConnection(?string $connection = null): \Illuminate\Database\Connection
     {
-        return static::$resolver->connection($connection);
+        $resolver = static::$resolver ?? EloquentModel::getConnectionResolver();
+
+        if ($resolver === null) {
+            throw ImmutableModelConfigurationException::missingConnectionResolver();
+        }
+
+        return $resolver->connection($connection);
     }
 
     // =========================================================================
