@@ -26,12 +26,13 @@ These constraints are absolute and must never be violated:
 |------|---------|
 | `src/ImmutableModel.php` | Abstract base class - core immutability enforcement |
 | `src/ImmutableQueryBuilder.php` | Read-only query builder wrapping Laravel's builder |
-| `src/ImmutableCollection.php` | Read-only collection blocking mutations |
 | `src/Relations/` | All relationship types (BelongsTo, HasOne, HasMany, etc.) |
 | `src/Exceptions/` | Exception classes for violations and config errors |
 | `src/Casts/CastManager.php` | Attribute casting system (read-only) |
 | `src/Scopes/ImmutableModelScope.php` | Interface for global query scopes |
 | `immutable-model-spec.md` | **Full specification** - read this for detailed requirements |
+
+**Note:** Query results return Laravel's standard `Eloquent\Collection`. Collection methods like `transform()`, `push()`, etc. work normally - the immutability is enforced on the models and database operations, not on in-memory collection manipulation.
 
 ## Immutability Enforcement Patterns
 
@@ -173,7 +174,6 @@ use Brighten\ImmutableModel\Exceptions\ImmutableModelConfigurationException;
 throw ImmutableModelViolationException::attributeMutation($key);
 throw ImmutableModelViolationException::relationMutation($relation);
 throw ImmutableModelViolationException::persistenceAttempt($method);
-throw ImmutableModelViolationException::collectionMutation($method);
 
 // Configuration errors
 throw ImmutableModelConfigurationException::missingPrimaryKey($class);

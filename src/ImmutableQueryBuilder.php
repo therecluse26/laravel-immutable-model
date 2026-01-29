@@ -19,6 +19,7 @@ use Brighten\ImmutableModel\Relations\ImmutableMorphToMany;
 use Brighten\ImmutableModel\Scopes\ImmutableModelScope;
 use Closure;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 /**
@@ -277,9 +278,9 @@ class ImmutableQueryBuilder extends Builder
      * Execute the query and get all results.
      *
      * @param array<int, string>|string $columns
-     * @return ImmutableCollection<int, ImmutableModel>
+     * @return EloquentCollection<int, ImmutableModel>
      */
-    public function get($columns = ['*']): ImmutableCollection
+    public function get($columns = ['*']): EloquentCollection
     {
         if ($columns !== ['*']) {
             $this->select($columns);
@@ -292,7 +293,7 @@ class ImmutableQueryBuilder extends Builder
             $models[] = $this->hydrateModel((array) $row);
         }
 
-        $collection = new ImmutableCollection($models);
+        $collection = new EloquentCollection($models);
 
         // Apply eager loading
         if (! empty($this->eagerLoad)) {
@@ -323,7 +324,7 @@ class ImmutableQueryBuilder extends Builder
 
         // Apply eager loading for single model
         if (! empty($this->eagerLoad)) {
-            $collection = new ImmutableCollection([$model]);
+            $collection = new EloquentCollection([$model]);
             $this->loadRelations($collection);
             $model = $collection->first();
         }
@@ -410,7 +411,7 @@ class ImmutableQueryBuilder extends Builder
     /**
      * Load the given relations on the collection.
      */
-    private function loadRelations(ImmutableCollection $models): void
+    private function loadRelations(EloquentCollection $models): void
     {
         if ($models->isEmpty()) {
             return;
@@ -457,7 +458,7 @@ class ImmutableQueryBuilder extends Builder
      *
      * @param array<string, Closure|null> $nestedLoads
      */
-    private function loadNestedRelations(ImmutableCollection $models, string $parentRelation, array $nestedLoads): void
+    private function loadNestedRelations(EloquentCollection $models, string $parentRelation, array $nestedLoads): void
     {
         // Collect all the loaded parent relation models
         $parentModels = [];
@@ -469,7 +470,7 @@ class ImmutableQueryBuilder extends Builder
                 continue;
             }
 
-            if ($loaded instanceof ImmutableCollection) {
+            if ($loaded instanceof EloquentCollection) {
                 foreach ($loaded as $item) {
                     if ($item instanceof ImmutableModel) {
                         $parentModels[] = $item;
@@ -484,7 +485,7 @@ class ImmutableQueryBuilder extends Builder
             return;
         }
 
-        $parentCollection = new ImmutableCollection($parentModels);
+        $parentCollection = new EloquentCollection($parentModels);
 
         // Load each nested relation on the parent collection
         foreach ($nestedLoads as $nestedName => $constraints) {
@@ -510,7 +511,7 @@ class ImmutableQueryBuilder extends Builder
      *
      * @param Closure|null $constraints
      */
-    private function loadRelationOnCollection(ImmutableCollection $models, string $name, ?Closure $constraints): void
+    private function loadRelationOnCollection(EloquentCollection $models, string $name, ?Closure $constraints): void
     {
         if ($models->isEmpty()) {
             return;
@@ -544,7 +545,7 @@ class ImmutableQueryBuilder extends Builder
      *
      * @param Closure|null $constraints
      */
-    private function loadRelation(ImmutableCollection $models, string $name, ?Closure $constraints): void
+    private function loadRelation(EloquentCollection $models, string $name, ?Closure $constraints): void
     {
         $this->loadRelationOnCollection($models, $name, $constraints);
     }

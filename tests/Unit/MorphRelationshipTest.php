@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Brighten\ImmutableModel\Tests\Unit;
 
 use Brighten\ImmutableModel\Exceptions\ImmutableModelViolationException;
-use Brighten\ImmutableModel\ImmutableCollection;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Brighten\ImmutableModel\Tests\Models\ImmutableImage;
 use Brighten\ImmutableModel\Tests\Models\ImmutablePost;
 use Brighten\ImmutableModel\Tests\Models\ImmutableUser;
@@ -130,7 +130,7 @@ class MorphRelationshipTest extends TestCase
     {
         $images = $this->post->images;
 
-        $this->assertInstanceOf(ImmutableCollection::class, $images);
+        $this->assertInstanceOf(EloquentCollection::class, $images);
         $this->assertCount(3, $images);
         $this->assertInstanceOf(ImmutableImage::class, $images->first());
     }
@@ -166,7 +166,7 @@ class MorphRelationshipTest extends TestCase
         $post = ImmutablePost::find(3);
         $images = $post->images;
 
-        $this->assertInstanceOf(ImmutableCollection::class, $images);
+        $this->assertInstanceOf(EloquentCollection::class, $images);
         $this->assertCount(0, $images);
     }
 

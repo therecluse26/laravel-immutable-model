@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Brighten\ImmutableModel\Tests\Parity;
 
-use Brighten\ImmutableModel\ImmutableCollection;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Brighten\ImmutableModel\ImmutableModel;
 use Brighten\ImmutableModel\ImmutableQueryBuilder;
 use Brighten\ImmutableModel\Tests\Models\ImmutableUser;
@@ -207,7 +207,7 @@ class ApiSurfaceTest extends ParityTestCase
     {
         foreach ($this->requiredCollectionMethods as $method) {
             $this->assertTrue(
-                method_exists(ImmutableCollection::class, $method),
+                method_exists(EloquentCollection::class, $method),
                 "ImmutableCollection is missing required method: {$method}"
             );
         }
@@ -243,19 +243,19 @@ class ApiSurfaceTest extends ParityTestCase
 
     public function test_collection_implements_countable(): void
     {
-        $class = new ReflectionClass(ImmutableCollection::class);
+        $class = new ReflectionClass(EloquentCollection::class);
         $this->assertTrue($class->implementsInterface(\Countable::class));
     }
 
     public function test_collection_implements_iterator_aggregate(): void
     {
-        $class = new ReflectionClass(ImmutableCollection::class);
+        $class = new ReflectionClass(EloquentCollection::class);
         $this->assertTrue($class->implementsInterface(\IteratorAggregate::class));
     }
 
     public function test_collection_implements_array_access(): void
     {
-        $class = new ReflectionClass(ImmutableCollection::class);
+        $class = new ReflectionClass(EloquentCollection::class);
         $this->assertTrue($class->implementsInterface(\ArrayAccess::class));
     }
 
@@ -297,7 +297,7 @@ class ApiSurfaceTest extends ParityTestCase
         $this->seedParityTestData();
         $collection = ImmutableUser::all();
 
-        $this->assertInstanceOf(ImmutableCollection::class, $collection);
+        $this->assertInstanceOf(EloquentCollection::class, $collection);
     }
 
     public function test_find_returns_immutable_model(): void
@@ -335,6 +335,6 @@ class ApiSurfaceTest extends ParityTestCase
         // Accessing as property returns the loaded relation
         $posts = $user->posts;
 
-        $this->assertInstanceOf(ImmutableCollection::class, $posts);
+        $this->assertInstanceOf(EloquentCollection::class, $posts);
     }
 }

@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace Brighten\ImmutableModel\Tests\Unit;
 
-use Brighten\ImmutableModel\ImmutableCollection;
+use Brighten\ImmutableModel\Exceptions\ImmutableModelViolationException;
 use Brighten\ImmutableModel\Tests\Models\ImmutableUser;
 use Brighten\ImmutableModel\Tests\TestCase;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 
 class CollectionTest extends TestCase
@@ -93,7 +94,7 @@ class CollectionTest extends TestCase
         $users = ImmutableUser::all();
         $filtered = $users->filter(fn($u) => $u->id > 1);
 
-        $this->assertInstanceOf(ImmutableCollection::class, $filtered);
+        $this->assertInstanceOf(EloquentCollection::class, $filtered);
         $this->assertCount(2, $filtered);
     }
 
@@ -102,7 +103,7 @@ class CollectionTest extends TestCase
         $users = ImmutableUser::all();
         $rejected = $users->reject(fn($u) => $u->id === 1);
 
-        $this->assertInstanceOf(ImmutableCollection::class, $rejected);
+        $this->assertInstanceOf(EloquentCollection::class, $rejected);
         $this->assertCount(2, $rejected);
     }
 
@@ -112,7 +113,7 @@ class CollectionTest extends TestCase
         // Use explicit equality operator for where
         $filtered = $users->where('name', '=', 'Alice');
 
-        $this->assertInstanceOf(ImmutableCollection::class, $filtered);
+        $this->assertInstanceOf(EloquentCollection::class, $filtered);
         $this->assertCount(1, $filtered);
     }
 
@@ -121,7 +122,7 @@ class CollectionTest extends TestCase
         $users = ImmutableUser::all();
         $filtered = $users->whereIn('id', [1, 2]);
 
-        $this->assertInstanceOf(ImmutableCollection::class, $filtered);
+        $this->assertInstanceOf(EloquentCollection::class, $filtered);
         $this->assertCount(2, $filtered);
     }
 
@@ -130,7 +131,7 @@ class CollectionTest extends TestCase
         $users = ImmutableUser::all();
         $filtered = $users->whereNotIn('id', [1, 2]);
 
-        $this->assertInstanceOf(ImmutableCollection::class, $filtered);
+        $this->assertInstanceOf(EloquentCollection::class, $filtered);
         $this->assertCount(1, $filtered);
     }
 
@@ -140,7 +141,7 @@ class CollectionTest extends TestCase
         // whereStrict uses strict equality (===)
         $filtered = $users->whereStrict('id', 1);
 
-        $this->assertInstanceOf(ImmutableCollection::class, $filtered);
+        $this->assertInstanceOf(EloquentCollection::class, $filtered);
         $this->assertCount(1, $filtered);
         $this->assertEquals('Alice', $filtered->first()->name);
     }
@@ -151,7 +152,7 @@ class CollectionTest extends TestCase
         // All users have null email_verified_at
         $filtered = $users->whereNull('email_verified_at');
 
-        $this->assertInstanceOf(ImmutableCollection::class, $filtered);
+        $this->assertInstanceOf(EloquentCollection::class, $filtered);
         $this->assertCount(3, $filtered);
     }
 
@@ -161,7 +162,7 @@ class CollectionTest extends TestCase
         // All users have null email_verified_at, so this should return 0
         $filtered = $users->whereNotNull('email_verified_at');
 
-        $this->assertInstanceOf(ImmutableCollection::class, $filtered);
+        $this->assertInstanceOf(EloquentCollection::class, $filtered);
         $this->assertCount(0, $filtered);
     }
 
@@ -170,7 +171,7 @@ class CollectionTest extends TestCase
         $users = ImmutableUser::query()->orderBy('id')->get();
         $sliced = $users->slice(1, 2);
 
-        $this->assertInstanceOf(ImmutableCollection::class, $sliced);
+        $this->assertInstanceOf(EloquentCollection::class, $sliced);
         $this->assertCount(2, $sliced);
     }
 
@@ -180,7 +181,7 @@ class CollectionTest extends TestCase
         // Custom sort by id descending
         $sorted = $users->sort(fn($a, $b) => $b->id <=> $a->id);
 
-        $this->assertInstanceOf(ImmutableCollection::class, $sorted);
+        $this->assertInstanceOf(EloquentCollection::class, $sorted);
         $this->assertEquals('Charlie', $sorted->first()->name);
     }
 
@@ -189,7 +190,7 @@ class CollectionTest extends TestCase
         $users = ImmutableUser::all();
         $taken = $users->take(2);
 
-        $this->assertInstanceOf(ImmutableCollection::class, $taken);
+        $this->assertInstanceOf(EloquentCollection::class, $taken);
         $this->assertCount(2, $taken);
     }
 
@@ -198,7 +199,7 @@ class CollectionTest extends TestCase
         $users = ImmutableUser::query()->orderBy('id')->get();
         $skipped = $users->skip(1);
 
-        $this->assertInstanceOf(ImmutableCollection::class, $skipped);
+        $this->assertInstanceOf(EloquentCollection::class, $skipped);
         $this->assertCount(2, $skipped);
         $this->assertEquals('Bob', $skipped->first()->name);
     }
@@ -208,7 +209,7 @@ class CollectionTest extends TestCase
         $users = ImmutableUser::all();
         $unique = $users->unique('name');
 
-        $this->assertInstanceOf(ImmutableCollection::class, $unique);
+        $this->assertInstanceOf(EloquentCollection::class, $unique);
         $this->assertCount(3, $unique);
     }
 
@@ -217,7 +218,7 @@ class CollectionTest extends TestCase
         $users = ImmutableUser::all();
         $sorted = $users->sortBy('name');
 
-        $this->assertInstanceOf(ImmutableCollection::class, $sorted);
+        $this->assertInstanceOf(EloquentCollection::class, $sorted);
         $this->assertEquals('Alice', $sorted->first()->name);
     }
 
@@ -226,7 +227,7 @@ class CollectionTest extends TestCase
         $users = ImmutableUser::all();
         $sorted = $users->sortByDesc('name');
 
-        $this->assertInstanceOf(ImmutableCollection::class, $sorted);
+        $this->assertInstanceOf(EloquentCollection::class, $sorted);
         $this->assertEquals('Charlie', $sorted->first()->name);
     }
 
@@ -235,7 +236,7 @@ class CollectionTest extends TestCase
         $users = ImmutableUser::query()->orderBy('id')->get();
         $reversed = $users->reverse();
 
-        $this->assertInstanceOf(ImmutableCollection::class, $reversed);
+        $this->assertInstanceOf(EloquentCollection::class, $reversed);
         $this->assertEquals('Charlie', $reversed->first()->name);
     }
 
@@ -244,7 +245,7 @@ class CollectionTest extends TestCase
         $users = ImmutableUser::all();
         $values = $users->values();
 
-        $this->assertInstanceOf(ImmutableCollection::class, $values);
+        $this->assertInstanceOf(EloquentCollection::class, $values);
     }
 
     // =========================================================================
@@ -257,7 +258,7 @@ class CollectionTest extends TestCase
         $names = $users->map(fn($u) => $u->name);
 
         $this->assertInstanceOf(Collection::class, $names);
-        $this->assertNotInstanceOf(ImmutableCollection::class, $names);
+        $this->assertNotInstanceOf(EloquentCollection::class, $names);
     }
 
     public function test_pluck_returns_base_collection(): void
@@ -266,7 +267,7 @@ class CollectionTest extends TestCase
         $names = $users->pluck('name');
 
         $this->assertInstanceOf(Collection::class, $names);
-        $this->assertNotInstanceOf(ImmutableCollection::class, $names);
+        $this->assertNotInstanceOf(EloquentCollection::class, $names);
     }
 
     public function test_keys_returns_base_collection(): void
@@ -445,10 +446,163 @@ class CollectionTest extends TestCase
         $mutable = $users->toBase();
 
         $this->assertInstanceOf(Collection::class, $mutable);
-        $this->assertNotInstanceOf(ImmutableCollection::class, $mutable);
+        $this->assertNotInstanceOf(EloquentCollection::class, $mutable);
 
         // Mutable collection allows modifications
         $mutable->push(ImmutableUser::find(1));
         $this->assertCount(4, $mutable);
+    }
+
+    // =========================================================================
+    // COLLECTION MUTATIONS (should work - these are in-memory only)
+    // =========================================================================
+
+    public function test_collection_push_works(): void
+    {
+        $users = ImmutableUser::all();
+        $initialCount = $users->count();
+
+        $newUser = ImmutableUser::find(1);
+        $users->push($newUser);
+
+        $this->assertCount($initialCount + 1, $users);
+    }
+
+    public function test_collection_pop_works(): void
+    {
+        $users = ImmutableUser::all();
+        $initialCount = $users->count();
+
+        $popped = $users->pop();
+
+        $this->assertInstanceOf(ImmutableUser::class, $popped);
+        $this->assertCount($initialCount - 1, $users);
+    }
+
+    public function test_collection_shift_works(): void
+    {
+        $users = ImmutableUser::query()->orderBy('id')->get();
+        $initialCount = $users->count();
+
+        $shifted = $users->shift();
+
+        $this->assertInstanceOf(ImmutableUser::class, $shifted);
+        $this->assertCount($initialCount - 1, $users);
+    }
+
+    public function test_collection_transform_works(): void
+    {
+        $users = ImmutableUser::all();
+
+        // Transform should work - it's in-memory only
+        $users->transform(fn ($user) => $user);
+
+        $this->assertCount(3, $users);
+        $this->assertInstanceOf(ImmutableUser::class, $users->first());
+    }
+
+    public function test_collection_put_works(): void
+    {
+        $users = ImmutableUser::all();
+        $newUser = ImmutableUser::find(1);
+
+        $users->put('custom_key', $newUser);
+
+        $this->assertSame($newUser, $users->get('custom_key'));
+    }
+
+    public function test_collection_forget_works(): void
+    {
+        $users = ImmutableUser::all();
+        $initialCount = $users->count();
+
+        $users->forget(0);
+
+        $this->assertCount($initialCount - 1, $users);
+    }
+
+    public function test_collection_splice_works(): void
+    {
+        $users = ImmutableUser::all();
+
+        $spliced = $users->splice(1, 1);
+
+        $this->assertCount(1, $spliced);
+        $this->assertCount(2, $users);
+    }
+
+    public function test_collection_prepend_works(): void
+    {
+        $users = ImmutableUser::all();
+        $initialCount = $users->count();
+        $newUser = ImmutableUser::find(1);
+
+        $users->prepend($newUser);
+
+        $this->assertCount($initialCount + 1, $users);
+        $this->assertSame($newUser, $users->first());
+    }
+
+    public function test_collection_offset_set_works(): void
+    {
+        $users = ImmutableUser::all();
+        $newUser = ImmutableUser::find(1);
+
+        $users[99] = $newUser;
+
+        $this->assertSame($newUser, $users[99]);
+    }
+
+    public function test_collection_offset_unset_works(): void
+    {
+        $users = ImmutableUser::all();
+        $initialCount = $users->count();
+
+        unset($users[0]);
+
+        $this->assertCount($initialCount - 1, $users);
+    }
+
+    // =========================================================================
+    // MODELS WITHIN COLLECTIONS REMAIN IMMUTABLE
+    // =========================================================================
+
+    public function test_model_in_collection_attribute_mutation_throws(): void
+    {
+        $users = ImmutableUser::all();
+
+        $this->expectException(ImmutableModelViolationException::class);
+        $this->expectExceptionMessage('Cannot set attribute');
+
+        $users->first()->name = 'New Name';
+    }
+
+    public function test_model_in_collection_after_transform_remains_immutable(): void
+    {
+        $users = ImmutableUser::all();
+        $users->transform(fn ($user) => $user);
+
+        $this->expectException(ImmutableModelViolationException::class);
+        $users->first()->name = 'New Name';
+    }
+
+    public function test_model_in_collection_persistence_throws(): void
+    {
+        $users = ImmutableUser::all();
+
+        $this->expectException(ImmutableModelViolationException::class);
+        $this->expectExceptionMessage('Cannot call [save]');
+
+        $users->first()->save();
+    }
+
+    public function test_model_in_collection_after_push_remains_immutable(): void
+    {
+        $users = ImmutableUser::all();
+        $newUser = ImmutableUser::find(1);
+        $users->push($newUser);
+
+        $this->expectException(ImmutableModelViolationException::class);
+        $users->last()->name = 'New Name';
     }
 }

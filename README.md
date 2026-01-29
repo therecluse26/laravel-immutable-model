@@ -191,26 +191,22 @@ Custom casters must implement `Illuminate\Contracts\Database\Eloquent\CastsAttri
 
 ### Collections
 
-Query results return `ImmutableCollection`, which blocks mutation:
+Query results return Laravel's standard `Eloquent\Collection`. All collection methods work normally - immutability is enforced on the **models and database operations**, not on in-memory collection manipulation:
 
 ```php
 $users = User::all();
 
-// Allowed: filtering and transformations that preserve models
-$active = $users->filter(fn($u) => $u->active);  // ImmutableCollection
-$sorted = $users->sortBy('name');                 // ImmutableCollection
+// All collection operations work normally
+$active = $users->filter(fn($u) => $u->active);
+$sorted = $users->sortBy('name');
+$names = $users->pluck('name');
+$mapped = $users->map(fn($u) => $u->toArray());
+$users->push($newUser);     // Works - this is in-memory only
+$users->transform(fn($u) => $u);  // Works
 
-// Allowed: transformations that change types
-$names = $users->pluck('name');  // Base Collection
-$mapped = $users->map(fn($u) => $u->toArray());  // Base Collection
-
-// Blocked: mutations
-$users->push($newUser);   // Throws ImmutableModelViolationException
-$users[0] = $other;       // Throws ImmutableModelViolationException
-
-// Escape hatch: explicit conversion to mutable collection
-$mutable = $users->toBase();
-$mutable->push($newUser);  // Works
+// Immutability is on the MODELS, not the collection
+$users->first()->name = 'New';  // Throws ImmutableModelViolationException
+$users->first()->save();        // Throws ImmutableModelViolationException
 ```
 
 ### Pagination

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Brighten\ImmutableModel\Tests\Unit;
 
-use Brighten\ImmutableModel\ImmutableCollection;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Brighten\ImmutableModel\Tests\Models\ImmutableCountry;
 use Brighten\ImmutableModel\Tests\Models\ImmutableSupplier;
 use Brighten\ImmutableModel\Tests\Models\ImmutableUser;
@@ -57,7 +57,7 @@ class RelationSoftDeletesTest extends TestCase
         $users = $this->country->users;
 
         // Should only see user from active supplier
-        $this->assertInstanceOf(ImmutableCollection::class, $users);
+        $this->assertInstanceOf(EloquentCollection::class, $users);
         $this->assertCount(1, $users);
         $this->assertEquals('User from Active', $users->first()->name);
     }
@@ -111,7 +111,7 @@ class RelationSoftDeletesTest extends TestCase
         $supplier = ImmutableSupplier::find(1);
         $users = $supplier->users;
 
-        $this->assertInstanceOf(ImmutableCollection::class, $users);
+        $this->assertInstanceOf(EloquentCollection::class, $users);
         $this->assertCount(1, $users);
     }
 
@@ -137,7 +137,7 @@ class RelationSoftDeletesTest extends TestCase
         $country = ImmutableCountry::find(1);
         $users = $country->users;
 
-        $this->assertInstanceOf(ImmutableCollection::class, $users);
+        $this->assertInstanceOf(EloquentCollection::class, $users);
         $this->assertCount(0, $users);
     }
 

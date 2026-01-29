@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Brighten\ImmutableModel\Tests\Unit;
 
-use Brighten\ImmutableModel\ImmutableCollection;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Brighten\ImmutableModel\Relations\ImmutablePivot;
 use Brighten\ImmutableModel\Tests\Models\ImmutablePost;
 use Brighten\ImmutableModel\Tests\Models\ImmutableTag;

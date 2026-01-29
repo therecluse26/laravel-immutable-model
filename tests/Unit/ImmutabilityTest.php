@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Brighten\ImmutableModel\Tests\Unit;
 
 use Brighten\ImmutableModel\Exceptions\ImmutableModelViolationException;
-use Brighten\ImmutableModel\ImmutableCollection;
 use Brighten\ImmutableModel\Tests\Models\ImmutablePost;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Brighten\ImmutableModel\Tests\Models\ImmutableUser;
 use Brighten\ImmutableModel\Tests\TestCase;
 
@@ -96,7 +96,7 @@ class ImmutabilityTest extends TestCase
         $this->expectException(ImmutableModelViolationException::class);
         $this->expectExceptionMessage('Cannot set relation [posts]');
 
-        $user->setRelation('posts', new ImmutableCollection([]));
+        $user->setRelation('posts', new EloquentCollection([]));
     }
 
     // =========================================================================
@@ -277,90 +277,6 @@ class ImmutabilityTest extends TestCase
         $this->expectExceptionMessage('Cannot call [forceDelete]');
 
         ImmutableUser::query()->forceDelete();
-    }
-
-    // =========================================================================
-    // COLLECTION MUTATION TESTS
-    // =========================================================================
-
-    public function test_collection_push_throws(): void
-    {
-        $users = ImmutableUser::all();
-
-        $this->expectException(ImmutableModelViolationException::class);
-        $this->expectExceptionMessage('Cannot call [push]');
-
-        $users->push(ImmutableUser::find(1));
-    }
-
-    public function test_collection_put_throws(): void
-    {
-        $users = ImmutableUser::all();
-
-        $this->expectException(ImmutableModelViolationException::class);
-        $this->expectExceptionMessage('Cannot call [put]');
-
-        $users->put(0, ImmutableUser::find(1));
-    }
-
-    public function test_collection_forget_throws(): void
-    {
-        $users = ImmutableUser::all();
-
-        $this->expectException(ImmutableModelViolationException::class);
-        $this->expectExceptionMessage('Cannot call [forget]');
-
-        $users->forget(0);
-    }
-
-    public function test_collection_pop_throws(): void
-    {
-        $users = ImmutableUser::all();
-
-        $this->expectException(ImmutableModelViolationException::class);
-        $this->expectExceptionMessage('Cannot call [pop]');
-
-        $users->pop();
-    }
-
-    public function test_collection_shift_throws(): void
-    {
-        $users = ImmutableUser::all();
-
-        $this->expectException(ImmutableModelViolationException::class);
-        $this->expectExceptionMessage('Cannot call [shift]');
-
-        $users->shift();
-    }
-
-    public function test_collection_offset_set_throws(): void
-    {
-        $users = ImmutableUser::all();
-
-        $this->expectException(ImmutableModelViolationException::class);
-        $this->expectExceptionMessage('Cannot call [offsetSet]');
-
-        $users[0] = ImmutableUser::find(1);
-    }
-
-    public function test_collection_offset_unset_throws(): void
-    {
-        $users = ImmutableUser::all();
-
-        $this->expectException(ImmutableModelViolationException::class);
-        $this->expectExceptionMessage('Cannot call [offsetUnset]');
-
-        unset($users[0]);
-    }
-
-    public function test_collection_transform_throws(): void
-    {
-        $users = ImmutableUser::all();
-
-        $this->expectException(ImmutableModelViolationException::class);
-        $this->expectExceptionMessage('Cannot call [transform]');
-
-        $users->transform(fn($user) => $user);
     }
 
     // =========================================================================

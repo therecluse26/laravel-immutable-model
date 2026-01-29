@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Brighten\ImmutableModel\Tests\Unit;
 
-use Brighten\ImmutableModel\ImmutableCollection;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Brighten\ImmutableModel\Tests\Models\ImmutableComment;
 use Brighten\ImmutableModel\Tests\Models\ImmutableCountry;
 use Brighten\ImmutableModel\Tests\Models\ImmutableImage;
@@ -366,7 +366,7 @@ class RelationQueryBuilderTest extends TestCase
     {
         $posts = $this->user->posts()->where('published', true)->get();
 
-        $this->assertInstanceOf(ImmutableCollection::class, $posts);
+        $this->assertInstanceOf(EloquentCollection::class, $posts);
         $this->assertCount(2, $posts);
     }
 
@@ -393,7 +393,7 @@ class RelationQueryBuilderTest extends TestCase
         // Test pattern: $user->posts()->with('comments')->get()
         $posts = $this->user->posts()->with('comments')->get();
 
-        $this->assertInstanceOf(ImmutableCollection::class, $posts);
+        $this->assertInstanceOf(EloquentCollection::class, $posts);
         $this->assertCount(3, $posts);
 
         // Verify nested relation was eager loaded
@@ -407,7 +407,7 @@ class RelationQueryBuilderTest extends TestCase
         // This is the pattern that triggered the IDE warning
         $images = $this->post->images()->with('imageable')->get();
 
-        $this->assertInstanceOf(ImmutableCollection::class, $images);
+        $this->assertInstanceOf(EloquentCollection::class, $images);
         $this->assertCount(2, $images);
 
         // Verify nested relation was eager loaded

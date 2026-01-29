@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Brighten\ImmutableModel\Relations;
 
 use Brighten\ImmutableModel\Exceptions\ImmutableModelViolationException;
-use Brighten\ImmutableModel\ImmutableCollection;
 use Brighten\ImmutableModel\ImmutableModel;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Brighten\ImmutableModel\ImmutableQueryBuilder;
 use Closure;
 use Illuminate\Database\Eloquent\Model as EloquentModel;
@@ -27,7 +27,7 @@ use Illuminate\Database\Eloquent\Model as EloquentModel;
  * @method $this|ImmutableQueryBuilder limit(int $value)
  * @method $this|ImmutableQueryBuilder offset(int $value)
  * @method $this|ImmutableQueryBuilder select(array|string $columns)
- * @method ImmutableCollection|\Illuminate\Support\Collection get(array $columns = ['*'])
+ * @method EloquentCollection|\Illuminate\Support\Collection get(array $columns = ['*'])
  * @method TRelatedModel|null first(array $columns = ['*'])
  * @method int count(string $columns = '*')
  * @method bool exists()
@@ -150,7 +150,7 @@ class ImmutableMorphOne
      * Eager load the relation on a collection of models.
      */
     public function eagerLoadOnCollection(
-        ImmutableCollection $models,
+        EloquentCollection $models,
         string $name,
         ?Closure $constraints = null
     ): void {

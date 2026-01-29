@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Brighten\ImmutableModel\Tests\Unit;
 
 use Brighten\ImmutableModel\Exceptions\ImmutableModelViolationException;
-use Brighten\ImmutableModel\ImmutableCollection;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Brighten\ImmutableModel\Relations\ImmutablePivot;
 use Brighten\ImmutableModel\Tests\Models\ImmutablePost;
 use Brighten\ImmutableModel\Tests\Models\ImmutableTag;
@@ -66,7 +66,7 @@ class BelongsToManyRelationshipTest extends TestCase
     {
         $tags = $this->post->tags;
 
-        $this->assertInstanceOf(ImmutableCollection::class, $tags);
+        $this->assertInstanceOf(EloquentCollection::class, $tags);
         $this->assertCount(2, $tags);
         $this->assertInstanceOf(ImmutableTag::class, $tags->first());
     }
@@ -119,7 +119,7 @@ class BelongsToManyRelationshipTest extends TestCase
         $post = ImmutablePost::find(2);
         $tags = $post->tags;
 
-        $this->assertInstanceOf(ImmutableCollection::class, $tags);
+        $this->assertInstanceOf(EloquentCollection::class, $tags);
         $this->assertCount(0, $tags);
     }
 
@@ -128,7 +128,7 @@ class BelongsToManyRelationshipTest extends TestCase
         // Tag -> Posts (inverse)
         $posts = $this->tag1->posts;
 
-        $this->assertInstanceOf(ImmutableCollection::class, $posts);
+        $this->assertInstanceOf(EloquentCollection::class, $posts);
         $this->assertCount(1, $posts);
         $this->assertInstanceOf(ImmutablePost::class, $posts->first());
     }

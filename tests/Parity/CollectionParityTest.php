@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Brighten\ImmutableModel\Tests\Parity;
 
-use Brighten\ImmutableModel\ImmutableCollection;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Brighten\ImmutableModel\Tests\Models\Eloquent\EloquentUser;
 use Brighten\ImmutableModel\Tests\Models\ImmutableUser;
 
@@ -492,6 +492,6 @@ class CollectionParityTest extends ParityTestCase
         $base = $immutable->toBase();
 
         $this->assertInstanceOf(\Illuminate\Support\Collection::class, $base);
-        $this->assertNotInstanceOf(ImmutableCollection::class, $base);
+        $this->assertNotInstanceOf(EloquentCollection::class, $base);
     }
 }

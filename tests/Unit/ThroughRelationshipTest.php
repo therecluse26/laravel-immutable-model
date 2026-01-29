@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Brighten\ImmutableModel\Tests\Unit;
 
 use Brighten\ImmutableModel\Exceptions\ImmutableModelViolationException;
-use Brighten\ImmutableModel\ImmutableCollection;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Brighten\ImmutableModel\Tests\Models\ImmutableCountry;
 use Brighten\ImmutableModel\Tests\Models\ImmutableSupplier;
 use Brighten\ImmutableModel\Tests\Models\ImmutableUser;
@@ -48,7 +48,7 @@ class ThroughRelationshipTest extends TestCase
     {
         $users = $this->country->users;
 
-        $this->assertInstanceOf(ImmutableCollection::class, $users);
+        $this->assertInstanceOf(EloquentCollection::class, $users);
         $this->assertCount(3, $users);
         $this->assertInstanceOf(ImmutableUser::class, $users->first());
     }
@@ -100,7 +100,7 @@ class ThroughRelationshipTest extends TestCase
         $country = ImmutableCountry::find(2);
         $users = $country->users;
 
-        $this->assertInstanceOf(ImmutableCollection::class, $users);
+        $this->assertInstanceOf(EloquentCollection::class, $users);
         $this->assertCount(0, $users);
     }
 

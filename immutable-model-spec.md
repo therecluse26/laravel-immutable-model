@@ -50,7 +50,7 @@ No attempt should be made to achieve full surface-area compatibility with `Illum
 2. Query builder and hydration pipeline
 3. Casting subsystem
 4. Relationships
-5. ImmutableCollection
+5. Collections (using Laravel's Eloquent\Collection)
 6. Global scopes
 7. Tests
 8. Documentation
@@ -117,7 +117,7 @@ A phase MUST be complete before the next begins.
 (Reference signatures; not fenced code blocks)
 - final protected static function hydrateFromRow(array|stdClass $row): static
 - public static function fromRow(array|stdClass $row): static
-- public static function fromRows(iterable $rows): ImmutableCollection
+- public static function fromRows(iterable $rows): EloquentCollection
 
 The `fromRow()` and `fromRows()` methods are public convenience wrappers that delegate to `hydrateFromRow()`. No context object is required.
 
@@ -193,12 +193,12 @@ The `fromRow()` and `fromRows()` methods are public convenience wrappers that de
 
 ### Terminal Methods
 
-- `get(): ImmutableCollection`
+- `get(): EloquentCollection`
 - `first(): ?ImmutableModel`
 - `firstOrFail(): ImmutableModel`
 - `find(mixed $id): ?ImmutableModel`
 - `findOrFail(mixed $id): ImmutableModel`
-- `pluck(string $column, ?string $key = null): Collection` (base Collection, not ImmutableCollection)
+- `pluck(string $column, ?string $key = null): Collection`
 - `count(): int`
 - `exists(): bool`
 - `doesntExist(): bool`
@@ -207,7 +207,7 @@ The `fromRow()` and `fromRows()` methods are public convenience wrappers that de
 ### Pagination
 
 Full pagination support:
-- `paginate(): LengthAwarePaginator` (items are ImmutableCollection)
+- `paginate(): LengthAwarePaginator` (items are EloquentCollection)
 - `simplePaginate(): Paginator`
 - `cursorPaginate(): CursorPaginator`
 
@@ -226,7 +226,7 @@ Full pagination support:
 - final class ImmutableQueryBuilder
   - where(...): static
   - with(...): static
-  - get(): ImmutableCollection
+  - get(): EloquentCollection
   - first(): ?ImmutableModel
   - firstOrFail(): ImmutableModel
   - find(mixed $id): ?ImmutableModel
@@ -283,38 +283,17 @@ Full pagination support:
 
 ## Collections
 
-### ImmutableCollection
-- Wraps `Illuminate\Support\Collection`
-- Implements:
-  - `IteratorAggregate`
-  - `Countable`
-  - `ArrayAccess` (read-only)
+### Standard Laravel Collections
+- Query results return Laravel's standard `Illuminate\Database\Eloquent\Collection`
+- All collection methods work normally (`push`, `transform`, `pop`, etc.)
+- **Immutability is enforced on the models, not the collection**
 
-### Collection Rules
-- Any attempt to add/remove/replace items MUST throw immediately:
-  - `push`, `put`, `forget`, `offsetSet`, `offsetUnset`, `pop`, `shift`, etc.
-- A mutable collection may be obtained only via an explicit `toBase()` call
+### Design Rationale
+Collection operations like `push()`, `transform()`, `pop()` only modify in-memory data structures - they don't affect the database. Since the goal of this package is to prevent database/model mutations (not to enforce pure functional programming), collection mutations are allowed.
 
-### Transformation Type Preservation
-- Transformations that preserve ImmutableModel items return `ImmutableCollection`:
-  - `filter()`, `reject()`, `where()`, `whereIn()`, `take()`, `skip()`, `unique()`, `sortBy()`, `values()`
-- Transformations that may change item types ALWAYS return base `Collection`:
-  - `map()`, `pluck()`, `keys()`, `flatMap()`, `groupBy()`
-
-> Rationale: Runtime type inference for map() adds complexity without significant benefit.
-> Users can wrap results manually if needed.
-
-### Collection Hydration
-
-ImmutableCollection MUST provide a static `fromRows()` method.
-This method MUST:
-- Accept an iterable of rows (array|stdClass)
-- Accept the target ImmutableModel class name
-- Hydrate each row via the target ImmutableModel::hydrateFromRow()
-- Return an ImmutableCollection of ImmutableModels
-- Reject mixed model types
-
-ImmutableCollection MUST NOT expose any mutation-capable bulk hydration or replacement APIs.
+The models within the collection remain immutable:
+- `$collection->first()->name = 'new'` throws `ImmutableModelViolationException`
+- `$collection->first()->save()` throws `ImmutableModelViolationException`
 
 ---
 
@@ -501,7 +480,6 @@ Document clearly:
 src/
 ├── ImmutableModel.php              # Abstract base class
 ├── ImmutableQueryBuilder.php       # Query wrapper
-├── ImmutableCollection.php         # Immutable collection
 ├── Exceptions/
 │   ├── ImmutableModelViolationException.php
 │   └── ImmutableModelConfigurationException.php

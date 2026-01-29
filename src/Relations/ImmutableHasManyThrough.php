@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace Brighten\ImmutableModel\Relations;
 
 use Brighten\ImmutableModel\Exceptions\ImmutableModelViolationException;
-use Brighten\ImmutableModel\ImmutableCollection;
 use Brighten\ImmutableModel\ImmutableModel;
 use Brighten\ImmutableModel\ImmutableQueryBuilder;
 use Closure;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Model as EloquentModel;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Collection;
@@ -30,7 +30,7 @@ use Illuminate\Support\Collection;
  * @method $this|ImmutableQueryBuilder limit(int $value)
  * @method $this|ImmutableQueryBuilder offset(int $value)
  * @method $this|ImmutableQueryBuilder select(array|string $columns)
- * @method ImmutableCollection|Collection get(array $columns = ['*'])
+ * @method EloquentCollection|Collection get(array $columns = ['*'])
  * @method TRelatedModel|null first(array $columns = ['*'])
  * @method int count(string $columns = '*')
  * @method bool exists()
@@ -129,16 +129,14 @@ class ImmutableHasManyThrough
     /**
      * Get the related models through the intermediate model.
      *
-     * @return ImmutableCollection|Collection
+     * @return EloquentCollection|Collection
      */
-    public function getResults(): ImmutableCollection|Collection
+    public function getResults(): EloquentCollection|Collection
     {
         $localKeyValue = $this->farParent->getRawAttribute($this->localKey);
 
         if ($localKeyValue === null) {
-            return $this->isImmutableRelated()
-                ? new ImmutableCollection([])
-                : new Collection([]);
+            return new EloquentCollection([]);
         }
 
         return $this->buildThroughQuery()
@@ -260,7 +258,7 @@ class ImmutableHasManyThrough
      * Eager load the relation on a collection of models.
      */
     public function eagerLoadOnCollection(
-        ImmutableCollection $models,
+        EloquentCollection $models,
         string $name,
         ?Closure $constraints = null
     ): void {
@@ -277,9 +275,7 @@ class ImmutableHasManyThrough
 
         if (empty($keys)) {
             // Set empty collection for all models
-            $emptyCollection = $this->isImmutableRelated()
-                ? new ImmutableCollection([])
-                : new Collection([]);
+            $emptyCollection = new EloquentCollection([]);
 
             foreach ($models as $model) {
                 $model->setRelationInternal($name, $emptyCollection);
@@ -320,11 +316,7 @@ class ImmutableHasManyThrough
             $localKey = $model->getRawAttribute($this->localKey);
             $relatedModels = $dictionary[$localKey] ?? [];
 
-            $collection = $this->isImmutableRelated()
-                ? new ImmutableCollection($relatedModels)
-                : new Collection($relatedModels);
-
-            $model->setRelationInternal($name, $collection);
+            $model->setRelationInternal($name, new EloquentCollection($relatedModels));
         }
     }
 

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Brighten\ImmutableModel\Tests\Parity;
 
-use Brighten\ImmutableModel\ImmutableCollection;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Brighten\ImmutableModel\Tests\Models\Eloquent\EloquentUser;
 use Brighten\ImmutableModel\Tests\Models\Eloquent\EloquentPost;
 use Brighten\ImmutableModel\Tests\Models\ImmutableUser;
@@ -626,7 +626,7 @@ class QueryBuilderParityTest extends ParityTestCase
         $immutable = ImmutableUser::all();
 
         $this->assertInstanceOf(\Illuminate\Database\Eloquent\Collection::class, $eloquent);
-        $this->assertInstanceOf(ImmutableCollection::class, $immutable);
+        $this->assertInstanceOf(EloquentCollection::class, $immutable);
     }
 
     public function test_empty_result_returns_empty_collection(): void

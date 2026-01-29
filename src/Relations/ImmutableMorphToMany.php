@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace Brighten\ImmutableModel\Relations;
 
 use Brighten\ImmutableModel\Exceptions\ImmutableModelViolationException;
-use Brighten\ImmutableModel\ImmutableCollection;
 use Brighten\ImmutableModel\ImmutableModel;
 use Brighten\ImmutableModel\ImmutableQueryBuilder;
 use Closure;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Model as EloquentModel;
 use Illuminate\Support\Collection;
 
@@ -31,7 +31,7 @@ use Illuminate\Support\Collection;
  * @method $this|ImmutableQueryBuilder limit(int $value)
  * @method $this|ImmutableQueryBuilder offset(int $value)
  * @method $this|ImmutableQueryBuilder select(array|string $columns)
- * @method ImmutableCollection|Collection get(array $columns = ['*'])
+ * @method EloquentCollection|Collection get(array $columns = ['*'])
  * @method TRelatedModel|null first(array $columns = ['*'])
  * @method int count(string $columns = '*')
  * @method bool exists()
@@ -226,16 +226,14 @@ class ImmutableMorphToMany
     /**
      * Get the related models with pivot data.
      *
-     * @return ImmutableCollection|Collection
+     * @return EloquentCollection|Collection
      */
-    public function getResults(): ImmutableCollection|Collection
+    public function getResults(): EloquentCollection|Collection
     {
         $parentKeyValue = $this->parent->getRawAttribute($this->parentKey);
 
         if ($parentKeyValue === null) {
-            return $this->isImmutableRelated()
-                ? new ImmutableCollection([])
-                : new Collection([]);
+            return new EloquentCollection([]);
         }
 
         $query = $this->buildSelectQuery();
@@ -343,10 +341,10 @@ class ImmutableMorphToMany
     /**
      * Hydrate the pivot relation on the given models.
      *
-     * @param  ImmutableCollection|Collection  $models
-     * @return ImmutableCollection|Collection
+     * @param  EloquentCollection|Collection  $models
+     * @return EloquentCollection|Collection
      */
-    private function hydratePivotRelation(ImmutableCollection|Collection $models): ImmutableCollection|Collection
+    private function hydratePivotRelation(EloquentCollection|Collection $models): EloquentCollection|Collection
     {
         foreach ($models as $model) {
             $this->attachPivotToModel($model);
@@ -404,7 +402,7 @@ class ImmutableMorphToMany
      * Eager load the relation on a collection of models.
      */
     public function eagerLoadOnCollection(
-        ImmutableCollection $models,
+        EloquentCollection $models,
         string $name,
         ?Closure $constraints = null
     ): void {
@@ -421,9 +419,7 @@ class ImmutableMorphToMany
 
         if (empty($keys)) {
             // Set empty collection for all models
-            $emptyCollection = $this->isImmutableRelated()
-                ? new ImmutableCollection([])
-                : new Collection([]);
+            $emptyCollection = new EloquentCollection([]);
 
             foreach ($models as $model) {
                 $model->setRelationInternal($name, $emptyCollection);
@@ -463,11 +459,7 @@ class ImmutableMorphToMany
             $parentKey = $model->getRawAttribute($this->parentKey);
             $relatedModels = $dictionary[$parentKey] ?? [];
 
-            $collection = $this->isImmutableRelated()
-                ? new ImmutableCollection($relatedModels)
-                : new Collection($relatedModels);
-
-            $model->setRelationInternal($name, $collection);
+            $model->setRelationInternal($name, new EloquentCollection($relatedModels));
         }
     }
 

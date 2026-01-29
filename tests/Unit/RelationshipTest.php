@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Brighten\ImmutableModel\Tests\Unit;
 
-use Brighten\ImmutableModel\ImmutableCollection;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Brighten\ImmutableModel\Tests\Models\ImmutableComment;
 use Brighten\ImmutableModel\Tests\Models\ImmutablePost;
 use Brighten\ImmutableModel\Tests\Models\ImmutableProfile;
@@ -181,7 +181,7 @@ class RelationshipTest extends TestCase
 
         $posts = $user->posts;
 
-        $this->assertInstanceOf(ImmutableCollection::class, $posts);
+        $this->assertInstanceOf(EloquentCollection::class, $posts);
         $this->assertCount(2, $posts);
     }
 
@@ -190,7 +190,7 @@ class RelationshipTest extends TestCase
         $user = ImmutableUser::with('posts')->find(1);
 
         $this->assertTrue($user->relationLoaded('posts'));
-        $this->assertInstanceOf(ImmutableCollection::class, $user->posts);
+        $this->assertInstanceOf(EloquentCollection::class, $user->posts);
         $this->assertCount(2, $user->posts);
     }
 
@@ -210,7 +210,7 @@ class RelationshipTest extends TestCase
         $user = ImmutableUser::find(3);
         $posts = $user->posts;
 
-        $this->assertInstanceOf(ImmutableCollection::class, $posts);
+        $this->assertInstanceOf(EloquentCollection::class, $posts);
         $this->assertTrue($posts->isEmpty());
     }
 
@@ -304,6 +304,6 @@ class RelationshipTest extends TestCase
 
         $posts = $user->getRelation('posts');
 
-        $this->assertInstanceOf(ImmutableCollection::class, $posts);
+        $this->assertInstanceOf(EloquentCollection::class, $posts);
     }
 }

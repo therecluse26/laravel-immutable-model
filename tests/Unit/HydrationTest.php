@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Brighten\ImmutableModel\Tests\Unit;
 
-use Brighten\ImmutableModel\ImmutableCollection;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Brighten\ImmutableModel\Tests\Models\ImmutableUser;
 use Brighten\ImmutableModel\Tests\TestCase;
 use stdClass;
@@ -88,7 +88,7 @@ class HydrationTest extends TestCase
 
         $users = ImmutableUser::fromRows($rows);
 
-        $this->assertInstanceOf(ImmutableCollection::class, $users);
+        $this->assertInstanceOf(EloquentCollection::class, $users);
         $this->assertCount(2, $users);
         $this->assertEquals('User 1', $users[0]->name);
         $this->assertEquals('User 2', $users[1]->name);
@@ -98,7 +98,7 @@ class HydrationTest extends TestCase
     {
         $users = ImmutableUser::query()->get();
 
-        $this->assertInstanceOf(ImmutableCollection::class, $users);
+        $this->assertInstanceOf(EloquentCollection::class, $users);
         $this->assertCount(2, $users);
         $this->assertInstanceOf(ImmutableUser::class, $users[0]);
     }
@@ -130,7 +130,7 @@ class HydrationTest extends TestCase
     {
         $users = ImmutableUser::all();
 
-        $this->assertInstanceOf(ImmutableCollection::class, $users);
+        $this->assertInstanceOf(EloquentCollection::class, $users);
         $this->assertCount(2, $users);
     }
 
@@ -153,10 +153,4 @@ class HydrationTest extends TestCase
         $this->assertArrayHasKey('email', $attributes);
     }
 
-    public function test_collection_from_rows_validates_model_class(): void
-    {
-        $this->expectException(\InvalidArgumentException::class);
-
-        ImmutableCollection::fromRows([], \stdClass::class);
-    }
 }

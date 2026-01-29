@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Brighten\ImmutableModel\Tests\Unit;
 
 use Brighten\ImmutableModel\Exceptions\ImmutableModelViolationException;
-use Brighten\ImmutableModel\ImmutableCollection;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Brighten\ImmutableModel\Tests\Models\ImmutableComment;
 use Brighten\ImmutableModel\Tests\Models\ImmutablePost;
 use Brighten\ImmutableModel\Tests\Models\ImmutableTag;
@@ -87,7 +87,7 @@ class RelationEdgeCasesTest extends TestCase
         $firstPost = $user1->posts->first();
         $comments = $firstPost->comments; // Lazy loads
 
-        $this->assertInstanceOf(ImmutableCollection::class, $comments);
+        $this->assertInstanceOf(EloquentCollection::class, $comments);
         $this->assertCount(1, $comments);
     }
 
@@ -141,25 +141,7 @@ class RelationEdgeCasesTest extends TestCase
         $user = ImmutableUser::find(1);
         $posts = $user->posts;
 
-        $this->assertInstanceOf(ImmutableCollection::class, $posts);
-    }
-
-    public function test_relation_collection_push_blocked(): void
-    {
-        $user = ImmutableUser::find(1);
-        $posts = $user->posts;
-
-        $this->expectException(ImmutableModelViolationException::class);
-        $posts->push(new ImmutablePost());
-    }
-
-    public function test_relation_collection_pop_blocked(): void
-    {
-        $user = ImmutableUser::find(1);
-        $posts = $user->posts;
-
-        $this->expectException(ImmutableModelViolationException::class);
-        $posts->pop();
+        $this->assertInstanceOf(EloquentCollection::class, $posts);
     }
 
     public function test_relation_collection_items_are_immutable(): void
@@ -216,7 +198,7 @@ class RelationEdgeCasesTest extends TestCase
 
         $posts = $user->getRelation('posts');
 
-        $this->assertInstanceOf(ImmutableCollection::class, $posts);
+        $this->assertInstanceOf(EloquentCollection::class, $posts);
         $this->assertCount(2, $posts);
     }
 
@@ -251,7 +233,7 @@ class RelationEdgeCasesTest extends TestCase
         $user = ImmutableUser::find(2);
         $posts = $user->posts;
 
-        $this->assertInstanceOf(ImmutableCollection::class, $posts);
+        $this->assertInstanceOf(EloquentCollection::class, $posts);
         $this->assertCount(1, $posts); // User 2 has 1 post
     }
 
@@ -291,7 +273,7 @@ class RelationEdgeCasesTest extends TestCase
         $post = ImmutablePost::find(3); // Post 3 has no tags
         $tags = $post->tags;
 
-        $this->assertInstanceOf(ImmutableCollection::class, $tags);
+        $this->assertInstanceOf(EloquentCollection::class, $tags);
         $this->assertCount(0, $tags);
     }
 
@@ -300,7 +282,7 @@ class RelationEdgeCasesTest extends TestCase
         $tag = ImmutableTag::find(1);
         $posts = $tag->posts;
 
-        $this->assertInstanceOf(ImmutableCollection::class, $posts);
+        $this->assertInstanceOf(EloquentCollection::class, $posts);
         $this->assertCount(2, $posts); // Tag 1 is on posts 1 and 2
     }
 

@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Brighten\ImmutableModel\Relations;
 
 use Brighten\ImmutableModel\Exceptions\ImmutableModelViolationException;
-use Brighten\ImmutableModel\ImmutableCollection;
 use Brighten\ImmutableModel\ImmutableModel;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Closure;
 use Illuminate\Database\Eloquent\Model as EloquentModel;
 
@@ -30,7 +30,7 @@ use Illuminate\Database\Eloquent\Model as EloquentModel;
  * @method $this|\Brighten\ImmutableModel\ImmutableQueryBuilder limit(int $value)
  * @method $this|\Brighten\ImmutableModel\ImmutableQueryBuilder offset(int $value)
  * @method $this|\Brighten\ImmutableModel\ImmutableQueryBuilder select(array|string $columns)
- * @method \Brighten\ImmutableModel\ImmutableCollection|\Illuminate\Support\Collection get(array $columns = ['*'])
+ * @method EloquentCollection|\Illuminate\Support\Collection get(array $columns = ['*'])
  * @method \Brighten\ImmutableModel\ImmutableModel|\Illuminate\Database\Eloquent\Model|null first(array $columns = ['*'])
  * @method int count(string $columns = '*')
  * @method bool exists()
@@ -129,7 +129,7 @@ class ImmutableMorphTo
      * may point to different related model types.
      */
     public function eagerLoadOnCollection(
-        ImmutableCollection $models,
+        EloquentCollection $models,
         string $name,
         ?Closure $constraints = null
     ): void {

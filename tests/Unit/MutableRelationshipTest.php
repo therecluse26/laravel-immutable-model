@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Brighten\ImmutableModel\Tests\Unit;
 
 use Brighten\ImmutableModel\Exceptions\ImmutableModelViolationException;
-use Brighten\ImmutableModel\ImmutableCollection;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Brighten\ImmutableModel\Tests\Models\ImmutablePost;
 use Brighten\ImmutableModel\Tests\Models\ImmutableUser;
 use Brighten\ImmutableModel\Tests\Models\Mutable\Category;
@@ -247,43 +247,39 @@ class MutableRelationshipTest extends TestCase
         $this->assertTrue($meta->isEmpty());
     }
 
-    public function test_has_many_mutable_returns_laravel_collection_not_immutable(): void
+    public function test_has_many_mutable_returns_laravel_collection(): void
     {
         $post = ImmutablePost::find(1);
         $meta = $post->meta;
 
-        // Critical: mutable relations return Laravel Collection, NOT ImmutableCollection
-        $this->assertInstanceOf(Collection::class, $meta);
-        $this->assertNotInstanceOf(ImmutableCollection::class, $meta);
+        // Relations return EloquentCollection
+        $this->assertInstanceOf(EloquentCollection::class, $meta);
     }
 
     // =========================================================================
     // COLLECTION TYPE VERIFICATION
     // =========================================================================
 
-    public function test_lazy_load_mutable_has_many_returns_laravel_collection(): void
+    public function test_lazy_load_mutable_has_many_returns_collection(): void
     {
         $post = ImmutablePost::find(1);
         $meta = $post->meta;
 
-        $this->assertInstanceOf(Collection::class, $meta);
-        $this->assertNotInstanceOf(ImmutableCollection::class, $meta);
+        $this->assertInstanceOf(EloquentCollection::class, $meta);
     }
 
-    public function test_eager_load_mutable_has_many_returns_laravel_collection(): void
+    public function test_eager_load_mutable_has_many_returns_collection(): void
     {
         $post = ImmutablePost::with('meta')->find(1);
 
-        $this->assertInstanceOf(Collection::class, $post->meta);
-        $this->assertNotInstanceOf(ImmutableCollection::class, $post->meta);
+        $this->assertInstanceOf(EloquentCollection::class, $post->meta);
     }
 
-    public function test_empty_mutable_has_many_returns_laravel_collection(): void
+    public function test_empty_mutable_has_many_returns_collection(): void
     {
         $post = ImmutablePost::find(3); // No meta
 
-        $this->assertInstanceOf(Collection::class, $post->meta);
-        $this->assertNotInstanceOf(ImmutableCollection::class, $post->meta);
+        $this->assertInstanceOf(EloquentCollection::class, $post->meta);
     }
 
     // =========================================================================
@@ -295,7 +291,7 @@ class MutableRelationshipTest extends TestCase
         $user = ImmutableUser::with(['posts', 'mutableSettings'])->find(1);
 
         // posts should be ImmutableCollection of ImmutablePost
-        $this->assertInstanceOf(ImmutableCollection::class, $user->posts);
+        $this->assertInstanceOf(EloquentCollection::class, $user->posts);
         $this->assertInstanceOf(ImmutablePost::class, $user->posts->first());
 
         // mutableSettings should be mutable UserSettings
@@ -398,14 +394,14 @@ class MutableRelationshipTest extends TestCase
 
         // Laravel wraps results using ImmutableModel::newCollection()
         // which returns ImmutableCollection
-        $this->assertInstanceOf(ImmutableCollection::class, $posts);
+        $this->assertInstanceOf(EloquentCollection::class, $posts);
     }
 
     public function test_eloquent_eager_load_returns_immutable_collection(): void
     {
         $category = Category::with('posts')->find(1);
 
-        $this->assertInstanceOf(ImmutableCollection::class, $category->posts);
+        $this->assertInstanceOf(EloquentCollection::class, $category->posts);
     }
 
     public function test_eloquent_relation_query_builder_works(): void
@@ -416,7 +412,7 @@ class MutableRelationshipTest extends TestCase
         $publishedPosts = $category->posts()->where('published', true)->get();
 
         $this->assertCount(1, $publishedPosts);
-        $this->assertInstanceOf(ImmutableCollection::class, $publishedPosts);
+        $this->assertInstanceOf(EloquentCollection::class, $publishedPosts);
         $this->assertEquals('First Post', $publishedPosts->first()->title);
     }
 

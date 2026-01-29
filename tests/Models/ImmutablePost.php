@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Brighten\ImmutableModel\Tests\Models;
 
-use Brighten\ImmutableModel\ImmutableCollection;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Brighten\ImmutableModel\ImmutableModel;
 use Brighten\ImmutableModel\Relations\ImmutableBelongsTo;
 use Brighten\ImmutableModel\Relations\ImmutableBelongsToMany;

@@ -22,6 +22,7 @@ use Brighten\ImmutableModel\Scopes\ImmutableModelScope;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Contracts\Support\Jsonable;
 use Illuminate\Database\ConnectionResolverInterface;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Model as EloquentModel;
 use Illuminate\Support\Str;
 use JsonSerializable;
@@ -213,16 +214,16 @@ abstract class ImmutableModel implements ArrayAccess, JsonSerializable, Arrayabl
     }
 
     /**
-     * Create a new ImmutableCollection instance.
+     * Create a new collection instance.
      *
      * This method is called by Laravel's relationship system when wrapping
      * query results in a collection.
      *
      * @param array<int, static> $models
      */
-    public function newCollection(array $models = []): ImmutableCollection
+    public function newCollection(array $models = []): EloquentCollection
     {
-        return new ImmutableCollection($models);
+        return new EloquentCollection($models);
     }
 
     /**
@@ -396,7 +397,7 @@ abstract class ImmutableModel implements ArrayAccess, JsonSerializable, Arrayabl
      *
      * @param iterable<array<string, mixed>|stdClass> $rows
      */
-    public static function fromRows(iterable $rows): ImmutableCollection
+    public static function fromRows(iterable $rows): EloquentCollection
     {
         $models = [];
 
@@ -404,7 +405,7 @@ abstract class ImmutableModel implements ArrayAccess, JsonSerializable, Arrayabl
             $models[] = static::hydrateFromRow($row);
         }
 
-        return new ImmutableCollection($models);
+        return new EloquentCollection($models);
     }
 
     /**
@@ -477,7 +478,7 @@ abstract class ImmutableModel implements ArrayAccess, JsonSerializable, Arrayabl
     /**
      * Get all models from the database.
      */
-    public static function all(): ImmutableCollection
+    public static function all(): EloquentCollection
     {
         return static::query()->get();
     }
@@ -1341,7 +1342,7 @@ abstract class ImmutableModel implements ArrayAccess, JsonSerializable, Arrayabl
                 continue;
             }
 
-            if ($value instanceof ImmutableCollection || $value instanceof ImmutableModel) {
+            if ($value instanceof EloquentCollection || $value instanceof ImmutableModel) {
                 $relations[$key] = $value->toArray();
             } elseif ($value instanceof Arrayable) {
                 $relations[$key] = $value->toArray();

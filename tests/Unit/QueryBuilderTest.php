@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Brighten\ImmutableModel\Tests\Unit;
 
 use Brighten\ImmutableModel\Exceptions\ImmutableModelConfigurationException;
-use Brighten\ImmutableModel\ImmutableCollection;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Brighten\ImmutableModel\ImmutableQueryBuilder;
 use Brighten\ImmutableModel\Tests\Models\ImmutableUser;
 use Brighten\ImmutableModel\Tests\Models\NoPrimaryKeyModel;
@@ -69,7 +69,7 @@ class QueryBuilderTest extends TestCase
     {
         $users = ImmutableUser::query()->get();
 
-        $this->assertInstanceOf(ImmutableCollection::class, $users);
+        $this->assertInstanceOf(EloquentCollection::class, $users);
         $this->assertCount(3, $users);
     }
 
