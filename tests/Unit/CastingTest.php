@@ -114,6 +114,71 @@ class CastingTest extends TestCase
     }
 
     // =========================================================================
+    // INVALID JSON HANDLING
+    // =========================================================================
+
+    public function test_cast_to_array_throws_on_invalid_json(): void
+    {
+        TestCastableModel::$testCasts = ['value' => 'array'];
+        $model = TestCastableModel::fromRow(['value' => 'not valid json']);
+
+        $this->expectException(\JsonException::class);
+        $model->value;
+    }
+
+    public function test_cast_to_json_throws_on_invalid_json(): void
+    {
+        TestCastableModel::$testCasts = ['value' => 'json'];
+        $model = TestCastableModel::fromRow(['value' => '{invalid}']);
+
+        $this->expectException(\JsonException::class);
+        $model->value;
+    }
+
+    public function test_cast_to_object_throws_on_invalid_json(): void
+    {
+        TestCastableModel::$testCasts = ['value' => 'object'];
+        $model = TestCastableModel::fromRow(['value' => 'comma,separated,string']);
+
+        $this->expectException(\JsonException::class);
+        $model->value;
+    }
+
+    public function test_cast_to_collection_throws_on_invalid_json(): void
+    {
+        TestCastableModel::$testCasts = ['value' => 'collection'];
+        $model = TestCastableModel::fromRow(['value' => '1,2,3']);
+
+        $this->expectException(\JsonException::class);
+        $model->value;
+    }
+
+    // =========================================================================
+    // INVALID JSON - DATABASE INTEGRATION
+    // =========================================================================
+
+    public function test_database_query_with_invalid_json_in_array_cast_column_throws(): void
+    {
+        // Simulate the real-world bug: database contains comma-separated string
+        // in a column that's cast as 'array' (JSON)
+        $this->app['db']->table('users')->insert([
+            'id' => 999,
+            'name' => 'Test User',
+            'email' => 'test@example.com',
+            'settings' => '1,3,5',  // Comma-separated, NOT valid JSON
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // Query the database - this is the real-world path
+        $user = ImmutableUser::find(999);
+
+        // Accessing the JSON-cast field should throw JsonException
+        $this->expectException(\JsonException::class);
+        $user->settings;
+    }
+
+    // =========================================================================
     // DATE/TIME CASTS
     // =========================================================================
 

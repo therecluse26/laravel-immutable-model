@@ -78,6 +78,8 @@ class CastManager
 
     /**
      * Cast a value to an object.
+     *
+     * @throws \JsonException If the string value is not valid JSON
      */
     private function castToObject(mixed $value): object
     {
@@ -86,10 +88,8 @@ class CastManager
         }
 
         if (is_string($value)) {
-            $decoded = json_decode($value);
-            if (json_last_error() === JSON_ERROR_NONE) {
-                return (object) $decoded;
-            }
+            $decoded = json_decode($value, false, 512, JSON_THROW_ON_ERROR);
+            return (object) $decoded;
         }
 
         return (object) $value;
@@ -97,6 +97,8 @@ class CastManager
 
     /**
      * Cast a value to an array.
+     *
+     * @throws \JsonException If the string value is not valid JSON
      */
     private function castToArray(mixed $value): array
     {
@@ -105,10 +107,7 @@ class CastManager
         }
 
         if (is_string($value)) {
-            $decoded = json_decode($value, true);
-            if (json_last_error() === JSON_ERROR_NONE) {
-                return $decoded;
-            }
+            return json_decode($value, true, 512, JSON_THROW_ON_ERROR);
         }
 
         return (array) $value;
