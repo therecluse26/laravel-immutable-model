@@ -241,14 +241,31 @@ abstract class ImmutableModel implements ArrayAccess, JsonSerializable, Arrayabl
     }
 
     /**
-     * Determine if the model has a named scope.
+     * Determine if the model has a given scope.
      *
-     * ImmutableModels do not support local scopes, so this always returns false.
-     * This method is required for Laravel's Builder compatibility.
+     * This matches Eloquent's Model::hasNamedScope() implementation.
+     *
+     * @param string $scope
+     * @return bool
      */
     public function hasNamedScope(string $scope): bool
     {
-        return false;
+        return method_exists($this, 'scope'.ucfirst($scope));
+    }
+
+    /**
+     * Apply the given named scope if possible.
+     *
+     * This matches Eloquent's Model::callNamedScope() implementation.
+     * The builder is prepended to parameters by Laravel's Builder::callScope().
+     *
+     * @param string $scope
+     * @param array<int, mixed> $parameters
+     * @return mixed
+     */
+    public function callNamedScope(string $scope, array $parameters = []): mixed
+    {
+        return $this->{'scope'.ucfirst($scope)}(...$parameters);
     }
 
     /**

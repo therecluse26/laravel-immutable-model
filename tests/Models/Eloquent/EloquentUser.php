@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Brighten\ImmutableModel\Tests\Models\Eloquent;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -80,5 +81,33 @@ class EloquentUser extends Model
     public function orders(): HasMany
     {
         return $this->hasMany(EloquentOrder::class, 'user_id', 'id');
+    }
+
+    // =========================================================================
+    // LOCAL SCOPES (for parity testing)
+    // =========================================================================
+
+    /**
+     * Scope to filter verified users (email_verified_at is not null).
+     */
+    public function scopeVerified(Builder $query): Builder
+    {
+        return $query->whereNotNull('email_verified_at');
+    }
+
+    /**
+     * Scope to filter by name pattern.
+     */
+    public function scopeNameLike(Builder $query, string $pattern): Builder
+    {
+        return $query->where('name', 'like', $pattern);
+    }
+
+    /**
+     * Scope to order by name.
+     */
+    public function scopeOrderByName(Builder $query, string $direction = 'asc'): Builder
+    {
+        return $query->orderBy('name', $direction);
     }
 }

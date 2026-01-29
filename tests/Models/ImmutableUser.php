@@ -6,6 +6,7 @@ namespace Brighten\ImmutableModel\Tests\Models;
 
 use Brighten\ImmutableModel\ImmutableCollection;
 use Brighten\ImmutableModel\ImmutableModel;
+use Brighten\ImmutableModel\ImmutableQueryBuilder;
 use Brighten\ImmutableModel\Relations\ImmutableBelongsTo;
 use Brighten\ImmutableModel\Relations\ImmutableHasMany;
 use Brighten\ImmutableModel\Relations\ImmutableHasOne;
@@ -102,5 +103,33 @@ class ImmutableUser extends ImmutableModel
     public function orders(): ImmutableHasMany
     {
         return $this->hasMany(ImmutableOrder::class, 'user_id', 'id');
+    }
+
+    // =========================================================================
+    // LOCAL SCOPES (for parity testing)
+    // =========================================================================
+
+    /**
+     * Scope to filter verified users (email_verified_at is not null).
+     */
+    public function scopeVerified(ImmutableQueryBuilder $query): ImmutableQueryBuilder
+    {
+        return $query->whereNotNull('email_verified_at');
+    }
+
+    /**
+     * Scope to filter by name pattern.
+     */
+    public function scopeNameLike(ImmutableQueryBuilder $query, string $pattern): ImmutableQueryBuilder
+    {
+        return $query->where('name', 'like', $pattern);
+    }
+
+    /**
+     * Scope to order by name.
+     */
+    public function scopeOrderByName(ImmutableQueryBuilder $query, string $direction = 'asc'): ImmutableQueryBuilder
+    {
+        return $query->orderBy('name', $direction);
     }
 }
