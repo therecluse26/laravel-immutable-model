@@ -516,8 +516,7 @@ class QueryBuilderParityTest extends ParityTestCase
         $eloquent = EloquentUser::select(['id', 'name'])->orderBy('id')->first();
         $immutable = ImmutableUser::query()->select(['id', 'name'])->orderBy('id')->first();
 
-        $this->assertEquals($eloquent->id, $immutable->id);
-        $this->assertEquals($eloquent->name, $immutable->name);
+        $this->assertModelParity($eloquent, $immutable);
     }
 
     public function test_add_select(): void
@@ -525,8 +524,7 @@ class QueryBuilderParityTest extends ParityTestCase
         $eloquent = EloquentUser::select('id')->addSelect('name')->orderBy('id')->first();
         $immutable = ImmutableUser::query()->select('id')->addSelect('name')->orderBy('id')->first();
 
-        $this->assertEquals($eloquent->id, $immutable->id);
-        $this->assertEquals($eloquent->name, $immutable->name);
+        $this->assertModelParity($eloquent, $immutable);
     }
 
     public function test_distinct(): void
@@ -563,17 +561,14 @@ class QueryBuilderParityTest extends ParityTestCase
         $eloquent = EloquentUser::orderBy('id')->simplePaginate(2);
         $immutable = ImmutableUser::query()->orderBy('id')->simplePaginate(2);
 
-        // SimplePaginate doesn't have total(), just compare items
-        $this->assertEquals(
-            $eloquent->items()[0]?->toArray(),
-            $immutable->items()[0]?->toArray(),
-            'simplePaginate() first item differs'
-        );
-        $this->assertEquals(
-            count($eloquent->items()),
-            count($immutable->items()),
-            'simplePaginate() item count differs'
-        );
+        // SimplePaginate doesn't have total(), compare all items
+        $eloquentItems = $eloquent->items();
+        $immutableItems = $immutable->items();
+        $this->assertCount(count($eloquentItems), $immutableItems);
+
+        foreach ($eloquentItems as $i => $eloquentModel) {
+            $this->assertModelParity($eloquentModel, $immutableItems[$i]);
+        }
     }
 
     // =========================================================================

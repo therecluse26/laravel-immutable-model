@@ -104,8 +104,8 @@ class EdgeCaseParityTest extends ParityTestCase
         $eloquent = EloquentUser::whereNotIn('id', [])->orderBy('id')->get();
         $immutable = ImmutableUser::whereNotIn('id', [])->orderBy('id')->get();
 
-        // Should return all records
-        $this->assertEquals($eloquent->count(), $immutable->count());
+        // Should return all records with full attribute parity
+        $this->assertCollectionParity($eloquent, $immutable);
     }
 
     public function test_where_between_same_values(): void
@@ -113,7 +113,7 @@ class EdgeCaseParityTest extends ParityTestCase
         $eloquent = EloquentUser::whereBetween('id', [1, 1])->get();
         $immutable = ImmutableUser::whereBetween('id', [1, 1])->get();
 
-        $this->assertEquals($eloquent->count(), $immutable->count());
+        $this->assertCollectionParity($eloquent, $immutable);
     }
 
     // =========================================================================
@@ -176,8 +176,8 @@ class EdgeCaseParityTest extends ParityTestCase
             ->when(true, fn($q) => $q->where('name', 'Alice'))
             ->get();
 
-        $this->assertEquals($eloquent->count(), $immutable->count());
         $this->assertEquals(1, $eloquent->count());
+        $this->assertCollectionParity($eloquent, $immutable);
     }
 
     public function test_when_false(): void
@@ -191,9 +191,9 @@ class EdgeCaseParityTest extends ParityTestCase
             ->orderBy('id')
             ->get();
 
-        // Should return all users
-        $this->assertEquals($eloquent->count(), $immutable->count());
+        // Should return all users with full attribute parity
         $this->assertGreaterThan(1, $eloquent->count());
+        $this->assertCollectionParity($eloquent, $immutable);
     }
 
     public function test_when_with_default(): void
@@ -213,8 +213,8 @@ class EdgeCaseParityTest extends ParityTestCase
             )
             ->get();
 
-        $this->assertEquals($eloquent->count(), $immutable->count());
         $this->assertEquals(1, $eloquent->count());
+        $this->assertCollectionParity($eloquent, $immutable);
     }
 
     public function test_unless_false(): void
@@ -226,8 +226,8 @@ class EdgeCaseParityTest extends ParityTestCase
             ->unless(false, fn($q) => $q->where('name', 'Alice'))
             ->get();
 
-        $this->assertEquals($eloquent->count(), $immutable->count());
         $this->assertEquals(1, $eloquent->count());
+        $this->assertCollectionParity($eloquent, $immutable);
     }
 
     public function test_unless_true(): void
@@ -241,8 +241,8 @@ class EdgeCaseParityTest extends ParityTestCase
             ->orderBy('id')
             ->get();
 
-        // Should return all users
-        $this->assertEquals($eloquent->count(), $immutable->count());
+        // Should return all users with full attribute parity
+        $this->assertCollectionParity($eloquent, $immutable);
     }
 
     // =========================================================================

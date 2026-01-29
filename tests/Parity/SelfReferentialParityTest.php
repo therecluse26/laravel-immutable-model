@@ -89,7 +89,7 @@ class SelfReferentialParityTest extends ParityTestCase
         $eloquentChildren = $eloquent->children->sortBy('id')->values();
         $immutableChildren = $immutable->children->sortBy('id')->values();
 
-        $this->assertEquals($eloquentChildren->count(), $immutableChildren->count());
+        $this->assertCollectionParity($eloquentChildren, $immutableChildren);
     }
 
     public function test_children_eager_load(): void
@@ -97,10 +97,10 @@ class SelfReferentialParityTest extends ParityTestCase
         $eloquent = EloquentCategory::with('children')->find(1);
         $immutable = ImmutableCategory::with('children')->find(1);
 
-        $this->assertEquals(
-            $eloquent->children->count(),
-            $immutable->children->count()
-        );
+        $eloquentChildren = $eloquent->children->sortBy('id')->values();
+        $immutableChildren = $immutable->children->sortBy('id')->values();
+
+        $this->assertCollectionParity($eloquentChildren, $immutableChildren);
     }
 
     public function test_leaf_category_children_empty(): void
@@ -123,17 +123,10 @@ class SelfReferentialParityTest extends ParityTestCase
         $eloquent = EloquentCategory::with('parent.parent')->find(6);
         $immutable = ImmutableCategory::with('parent.parent')->find(6);
 
-        // Parent should be Phones
-        $this->assertEquals(
-            $eloquent->parent->name,
-            $immutable->parent->name
-        );
-
-        // Grandparent should be Electronics
-        $this->assertEquals(
-            $eloquent->parent->parent->name,
-            $immutable->parent->parent->name
-        );
+        // Full parity at each level
+        $this->assertModelParity($eloquent, $immutable, 'Category parity failed');
+        $this->assertModelParity($eloquent->parent, $immutable->parent, 'Parent parity failed');
+        $this->assertModelParity($eloquent->parent->parent, $immutable->parent->parent, 'Grandparent parity failed');
     }
 
     public function test_nested_children_eager_load(): void
@@ -142,21 +135,22 @@ class SelfReferentialParityTest extends ParityTestCase
         $eloquent = EloquentCategory::with('children.children')->find(1);
         $immutable = ImmutableCategory::with('children.children')->find(1);
 
-        // Should have children (Phones, Laptops)
-        $this->assertEquals(
-            $eloquent->children->count(),
-            $immutable->children->count()
-        );
+        // Full parity at root level
+        $this->assertModelParity($eloquent, $immutable, 'Root category parity failed');
 
-        // Phones should have grandchildren
+        // Children should have full parity
+        $eloquentChildren = $eloquent->children->sortBy('id')->values();
+        $immutableChildren = $immutable->children->sortBy('id')->values();
+        $this->assertCollectionParity($eloquentChildren, $immutableChildren);
+
+        // Grandchildren should have full parity
         $eloquentPhones = $eloquent->children->firstWhere('name', 'Phones');
         $immutablePhones = $immutable->children->first(fn($c) => $c->name === 'Phones');
 
         if ($eloquentPhones && $immutablePhones) {
-            $this->assertEquals(
-                $eloquentPhones->children->count(),
-                $immutablePhones->children->count()
-            );
+            $eloquentGrandchildren = $eloquentPhones->children->sortBy('id')->values();
+            $immutableGrandchildren = $immutablePhones->children->sortBy('id')->values();
+            $this->assertCollectionParity($eloquentGrandchildren, $immutableGrandchildren);
         }
     }
 
@@ -169,7 +163,7 @@ class SelfReferentialParityTest extends ParityTestCase
         $eloquent = EloquentCategory::whereNull('parent_id')->orderBy('id')->get();
         $immutable = ImmutableCategory::whereNull('parent_id')->orderBy('id')->get();
 
-        $this->assertEquals($eloquent->count(), $immutable->count());
+        $this->assertCollectionParity($eloquent, $immutable);
     }
 
     public function test_query_by_depth(): void
@@ -177,6 +171,6 @@ class SelfReferentialParityTest extends ParityTestCase
         $eloquent = EloquentCategory::where('depth', 1)->orderBy('id')->get();
         $immutable = ImmutableCategory::where('depth', 1)->orderBy('id')->get();
 
-        $this->assertEquals($eloquent->count(), $immutable->count());
+        $this->assertCollectionParity($eloquent, $immutable);
     }
 }

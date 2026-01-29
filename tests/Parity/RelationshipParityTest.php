@@ -291,7 +291,20 @@ class RelationshipParityTest extends ParityTestCase
         $eloquentUser = EloquentUser::withCount('posts')->find(1);
         $immutableUser = ImmutableUser::withCount('posts')->find(1);
 
-        $this->assertEquals($eloquentUser->posts_count, $immutableUser->posts_count);
+        // Verify FULL attribute parity (count + all base attributes)
+        $this->assertModelAttributesParity($eloquentUser, $immutableUser);
+    }
+
+    public function test_with_count_on_collection(): void
+    {
+        $eloquentUsers = EloquentUser::withCount('posts')->orderBy('id')->get();
+        $immutableUsers = ImmutableUser::withCount('posts')->orderBy('id')->get();
+
+        $this->assertEquals($eloquentUsers->count(), $immutableUsers->count());
+
+        foreach ($eloquentUsers as $i => $user) {
+            $this->assertModelAttributesParity($user, $immutableUsers[$i]);
+        }
     }
 
     // =========================================================================
@@ -309,9 +322,10 @@ class RelationshipParityTest extends ParityTestCase
         $this->assertEquals($eloquentTags->count(), $immutableTags->count());
 
         for ($i = 0; $i < $eloquentTags->count(); $i++) {
-            $this->assertEquals(
-                $eloquentTags[$i]->toArray(),
-                $immutableTags[$i]->toArray(),
+            // Use assertModelParity for pivot relations (handles pivot data correctly)
+            $this->assertModelParity(
+                $eloquentTags[$i],
+                $immutableTags[$i],
                 "Tag at index {$i} differs"
             );
         }
@@ -549,11 +563,26 @@ class RelationshipParityTest extends ParityTestCase
         $this->assertEquals($eloquentUsers->count(), $immutableUsers->count());
 
         for ($i = 0; $i < $eloquentUsers->count(); $i++) {
-            $this->assertEquals(
-                $eloquentUsers[$i]->posts->count(),
-                $immutableUsers[$i]->posts->count(),
-                "User {$i} published post count differs"
+            // Verify user attributes
+            $this->assertModelAttributesParity(
+                $eloquentUsers[$i],
+                $immutableUsers[$i],
+                "User {$i} attributes differ"
             );
+
+            // Verify post collection
+            $eloquentPosts = $eloquentUsers[$i]->posts->sortBy('id')->values();
+            $immutablePosts = $immutableUsers[$i]->posts->sortBy('id')->values();
+
+            $this->assertEquals($eloquentPosts->count(), $immutablePosts->count());
+
+            for ($j = 0; $j < $eloquentPosts->count(); $j++) {
+                $this->assertModelAttributesParity(
+                    $eloquentPosts[$j],
+                    $immutablePosts[$j],
+                    "User {$i} post {$j} attributes differ"
+                );
+            }
         }
     }
 
@@ -564,11 +593,42 @@ class RelationshipParityTest extends ParityTestCase
 
         $this->assertEquals($eloquentUsers->count(), $immutableUsers->count());
 
-        // Check first user's first post's comments
-        $eloquentComments = $eloquentUsers[0]->posts->first()?->comments ?? collect();
-        $immutableComments = $immutableUsers[0]->posts->first()?->comments;
+        for ($i = 0; $i < $eloquentUsers->count(); $i++) {
+            // Verify user attributes
+            $this->assertModelAttributesParity(
+                $eloquentUsers[$i],
+                $immutableUsers[$i],
+                "User {$i} attributes differ"
+            );
 
-        $this->assertEquals($eloquentComments->count(), $immutableComments?->count() ?? 0);
+            // Verify posts and their comments
+            $eloquentPosts = $eloquentUsers[$i]->posts->sortBy('id')->values();
+            $immutablePosts = $immutableUsers[$i]->posts->sortBy('id')->values();
+
+            $this->assertEquals($eloquentPosts->count(), $immutablePosts->count());
+
+            for ($j = 0; $j < $eloquentPosts->count(); $j++) {
+                $this->assertModelAttributesParity(
+                    $eloquentPosts[$j],
+                    $immutablePosts[$j],
+                    "User {$i} post {$j} attributes differ"
+                );
+
+                // Verify comments on each post
+                $eloquentComments = $eloquentPosts[$j]->comments->sortBy('id')->values();
+                $immutableComments = $immutablePosts[$j]->comments->sortBy('id')->values();
+
+                $this->assertEquals($eloquentComments->count(), $immutableComments->count());
+
+                for ($k = 0; $k < $eloquentComments->count(); $k++) {
+                    $this->assertModelAttributesParity(
+                        $eloquentComments[$k],
+                        $immutableComments[$k],
+                        "User {$i} post {$j} comment {$k} attributes differ"
+                    );
+                }
+            }
+        }
     }
 
     public function test_multiple_eager_loads(): void
@@ -576,14 +636,27 @@ class RelationshipParityTest extends ParityTestCase
         $eloquentUser = EloquentUser::with(['profile', 'posts', 'comments'])->find(1);
         $immutableUser = ImmutableUser::with(['profile', 'posts', 'comments'])->find(1);
 
-        // Profile
-        $this->assertModelParity($eloquentUser->profile, $immutableUser->profile);
+        // User attributes
+        $this->assertModelAttributesParity($eloquentUser, $immutableUser);
 
-        // Posts count
-        $this->assertEquals($eloquentUser->posts->count(), $immutableUser->posts->count());
+        // Profile attributes
+        $this->assertModelAttributesParity($eloquentUser->profile, $immutableUser->profile);
 
-        // Comments count
-        $this->assertEquals($eloquentUser->comments->count(), $immutableUser->comments->count());
+        // Posts
+        $eloquentPosts = $eloquentUser->posts->sortBy('id')->values();
+        $immutablePosts = $immutableUser->posts->sortBy('id')->values();
+        $this->assertEquals($eloquentPosts->count(), $immutablePosts->count());
+        for ($i = 0; $i < $eloquentPosts->count(); $i++) {
+            $this->assertModelAttributesParity($eloquentPosts[$i], $immutablePosts[$i]);
+        }
+
+        // Comments
+        $eloquentComments = $eloquentUser->comments->sortBy('id')->values();
+        $immutableComments = $immutableUser->comments->sortBy('id')->values();
+        $this->assertEquals($eloquentComments->count(), $immutableComments->count());
+        for ($i = 0; $i < $eloquentComments->count(); $i++) {
+            $this->assertModelAttributesParity($eloquentComments[$i], $immutableComments[$i]);
+        }
     }
 
     // =========================================================================
@@ -595,10 +668,14 @@ class RelationshipParityTest extends ParityTestCase
         $eloquentUser = EloquentUser::find(1);
         $immutableUser = ImmutableUser::find(1);
 
-        $eloquentPosts = $eloquentUser->posts()->where('published', true)->get();
-        $immutablePosts = $immutableUser->posts()->where('published', true)->get();
+        $eloquentPosts = $eloquentUser->posts()->where('published', true)->orderBy('id')->get();
+        $immutablePosts = $immutableUser->posts()->where('published', true)->orderBy('id')->get();
 
         $this->assertEquals($eloquentPosts->count(), $immutablePosts->count());
+
+        for ($i = 0; $i < $eloquentPosts->count(); $i++) {
+            $this->assertModelAttributesParity($eloquentPosts[$i], $immutablePosts[$i]);
+        }
     }
 
     public function test_relation_method_first(): void

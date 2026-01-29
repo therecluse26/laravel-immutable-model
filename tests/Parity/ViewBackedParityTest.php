@@ -48,7 +48,7 @@ class ViewBackedParityTest extends ParityTestCase
         $eloquent = EloquentUserPostCount::orderBy('user_id')->get();
         $immutable = ImmutableUserPostCount::orderBy('user_id')->get();
 
-        $this->assertEquals($eloquent->count(), $immutable->count(), 'View row count mismatch');
+        $this->assertCollectionParity($eloquent, $immutable);
     }
 
     public function test_first_from_view(): void
@@ -56,9 +56,7 @@ class ViewBackedParityTest extends ParityTestCase
         $eloquent = EloquentUserPostCount::orderBy('user_id')->first();
         $immutable = ImmutableUserPostCount::orderBy('user_id')->first();
 
-        $this->assertEquals($eloquent->user_id, $immutable->user_id);
-        $this->assertEquals($eloquent->name, $immutable->name);
-        $this->assertEquals($eloquent->post_count, $immutable->post_count);
+        $this->assertModelParity($eloquent, $immutable);
     }
 
     // =========================================================================
@@ -70,7 +68,7 @@ class ViewBackedParityTest extends ParityTestCase
         $eloquent = EloquentUserPostCount::where('post_count', '>', 0)->orderBy('user_id')->get();
         $immutable = ImmutableUserPostCount::where('post_count', '>', 0)->orderBy('user_id')->get();
 
-        $this->assertEquals($eloquent->count(), $immutable->count(), 'Filter count mismatch');
+        $this->assertCollectionParity($eloquent, $immutable);
     }
 
     public function test_where_on_base_column(): void
@@ -78,16 +76,15 @@ class ViewBackedParityTest extends ParityTestCase
         $eloquent = EloquentUserPostCount::where('name', 'Alice')->first();
         $immutable = ImmutableUserPostCount::where('name', 'Alice')->first();
 
-        $this->assertEquals($eloquent->user_id, $immutable->user_id);
-        $this->assertEquals($eloquent->post_count, $immutable->post_count);
+        $this->assertModelParity($eloquent, $immutable);
     }
 
     public function test_where_post_count_zero(): void
     {
-        $eloquent = EloquentUserPostCount::where('post_count', 0)->get();
-        $immutable = ImmutableUserPostCount::where('post_count', 0)->get();
+        $eloquent = EloquentUserPostCount::where('post_count', 0)->orderBy('user_id')->get();
+        $immutable = ImmutableUserPostCount::where('post_count', 0)->orderBy('user_id')->get();
 
-        $this->assertEquals($eloquent->count(), $immutable->count(), 'Zero post count mismatch');
+        $this->assertCollectionParity($eloquent, $immutable);
     }
 
     // =========================================================================
@@ -96,14 +93,11 @@ class ViewBackedParityTest extends ParityTestCase
 
     public function test_order_by_aggregated_column(): void
     {
-        $eloquent = EloquentUserPostCount::orderByDesc('post_count')->get();
-        $immutable = ImmutableUserPostCount::orderByDesc('post_count')->get();
+        // Add secondary sort for deterministic order when post_count ties
+        $eloquent = EloquentUserPostCount::orderByDesc('post_count')->orderBy('user_id')->get();
+        $immutable = ImmutableUserPostCount::orderByDesc('post_count')->orderBy('user_id')->get();
 
-        $this->assertEquals(
-            $eloquent->first()->user_id,
-            $immutable->first()->user_id,
-            'Top poster mismatch'
-        );
+        $this->assertCollectionParity($eloquent, $immutable);
     }
 
     public function test_order_by_name(): void
@@ -164,11 +158,7 @@ class ViewBackedParityTest extends ParityTestCase
         $eloquent = EloquentUserPostCount::select('name', 'post_count')->orderBy('user_id')->get();
         $immutable = ImmutableUserPostCount::select('name', 'post_count')->orderBy('user_id')->get();
 
-        $this->assertEquals($eloquent->count(), $immutable->count());
-
-        // Compare first record
-        $this->assertEquals($eloquent->first()->name, $immutable->first()->name);
-        $this->assertEquals($eloquent->first()->post_count, $immutable->first()->post_count);
+        $this->assertCollectionParity($eloquent, $immutable);
     }
 
     public function test_pluck_from_view(): void
@@ -193,13 +183,10 @@ class ViewBackedParityTest extends ParityTestCase
 
     public function test_to_array_from_view(): void
     {
-        $eloquent = EloquentUserPostCount::orderBy('user_id')->first()->toArray();
-        $immutable = ImmutableUserPostCount::orderBy('user_id')->first()->toArray();
+        $eloquent = EloquentUserPostCount::orderBy('user_id')->first();
+        $immutable = ImmutableUserPostCount::orderBy('user_id')->first();
 
-        // Compare relevant keys
-        $this->assertEquals($eloquent['user_id'], $immutable['user_id']);
-        $this->assertEquals($eloquent['name'], $immutable['name']);
-        $this->assertEquals($eloquent['post_count'], $immutable['post_count']);
+        $this->assertModelParity($eloquent, $immutable);
     }
 
     public function test_to_json_from_view(): void
@@ -207,10 +194,7 @@ class ViewBackedParityTest extends ParityTestCase
         $eloquent = EloquentUserPostCount::orderBy('user_id')->get();
         $immutable = ImmutableUserPostCount::orderBy('user_id')->get();
 
-        $eloquentJson = json_decode($eloquent->toJson(), true);
-        $immutableJson = json_decode($immutable->toJson(), true);
-
-        $this->assertEquals(count($eloquentJson), count($immutableJson), 'JSON array count mismatch');
+        $this->assertCollectionParity($eloquent, $immutable);
     }
 
     // =========================================================================
@@ -224,9 +208,7 @@ class ViewBackedParityTest extends ParityTestCase
         $eloquent = EloquentUserPostCount::where('user_id', 1)->first();
         $immutable = ImmutableUserPostCount::where('user_id', 1)->first();
 
-        $this->assertEquals($eloquent->user_id, $immutable->user_id);
-        $this->assertEquals($eloquent->name, $immutable->name);
-        $this->assertEquals($eloquent->post_count, $immutable->post_count);
+        $this->assertModelParity($eloquent, $immutable);
     }
 
     // =========================================================================
@@ -238,9 +220,7 @@ class ViewBackedParityTest extends ParityTestCase
         $eloquent = EloquentUserPostCount::orderBy('user_id')->paginate(2);
         $immutable = ImmutableUserPostCount::orderBy('user_id')->paginate(2);
 
-        $this->assertEquals($eloquent->total(), $immutable->total(), 'Pagination total mismatch');
-        $this->assertEquals($eloquent->perPage(), $immutable->perPage(), 'Pagination per page mismatch');
-        $this->assertEquals($eloquent->count(), $immutable->count(), 'Pagination current page count mismatch');
+        $this->assertPaginationParity($eloquent, $immutable);
     }
 
     public function test_simple_paginate_on_view(): void
@@ -248,7 +228,11 @@ class ViewBackedParityTest extends ParityTestCase
         $eloquent = EloquentUserPostCount::orderBy('user_id')->simplePaginate(2);
         $immutable = ImmutableUserPostCount::orderBy('user_id')->simplePaginate(2);
 
-        $this->assertEquals($eloquent->count(), $immutable->count(), 'Simple pagination count mismatch');
+        // SimplePaginator doesn't have total(), so check items parity
+        $this->assertEquals($eloquent->perPage(), $immutable->perPage());
+        foreach ($eloquent->items() as $i => $eloquentModel) {
+            $this->assertModelParity($eloquentModel, $immutable->items()[$i]);
+        }
     }
 
     // =========================================================================

@@ -132,7 +132,7 @@ class UuidKeyParityTest extends ParityTestCase
             ->orderBy('name')
             ->get();
 
-        $this->assertEquals($eloquent->count(), $immutable->count());
+        $this->assertCollectionParity($eloquent, $immutable);
     }
 
     // =========================================================================
@@ -141,12 +141,12 @@ class UuidKeyParityTest extends ParityTestCase
 
     public function test_uuid_preserved_in_to_array(): void
     {
-        $eloquent = EloquentProduct::find($this->uuid1)->toArray();
-        $immutable = ImmutableProduct::find($this->uuid1)->toArray();
+        $eloquent = EloquentProduct::find($this->uuid1);
+        $immutable = ImmutableProduct::find($this->uuid1);
 
-        $this->assertEquals($eloquent['uuid'], $immutable['uuid']);
-        $this->assertEquals($this->uuid1, $eloquent['uuid']);
-        $this->assertEquals($this->uuid1, $immutable['uuid']);
+        $this->assertModelParity($eloquent, $immutable);
+        $this->assertEquals($this->uuid1, $eloquent->uuid);
+        $this->assertEquals($this->uuid1, $immutable->uuid);
     }
 
     public function test_get_key_returns_uuid(): void
@@ -168,6 +168,6 @@ class UuidKeyParityTest extends ParityTestCase
         $eloquent = EloquentProduct::orderBy('name')->get();
         $immutable = ImmutableProduct::query()->orderBy('name')->get();
 
-        $this->assertEquals($eloquent->count(), $immutable->count());
+        $this->assertCollectionParity($eloquent, $immutable);
     }
 }

@@ -198,20 +198,7 @@ class QueryBuilderAdvancedParityTest extends ParityTestCase
             ->orderBy('posts.id')
             ->get();
 
-        $this->assertEquals($eloquent->count(), $immutable->count(), 'join() count differs');
-
-        for ($i = 0; $i < $eloquent->count(); $i++) {
-            $this->assertEquals(
-                $eloquent[$i]->name,
-                $immutable[$i]->name,
-                "join() name at index {$i} differs"
-            );
-            $this->assertEquals(
-                $eloquent[$i]->title,
-                $immutable[$i]->title,
-                "join() title at index {$i} differs"
-            );
-        }
+        $this->assertCollectionParity($eloquent, $immutable);
     }
 
     public function test_left_join_parity(): void
@@ -229,20 +216,7 @@ class QueryBuilderAdvancedParityTest extends ParityTestCase
             ->orderBy('posts.id')
             ->get();
 
-        $this->assertEquals($eloquent->count(), $immutable->count(), 'leftJoin() count differs');
-
-        for ($i = 0; $i < $eloquent->count(); $i++) {
-            $this->assertEquals(
-                $eloquent[$i]->name,
-                $immutable[$i]->name,
-                "leftJoin() name at index {$i} differs"
-            );
-            $this->assertEquals(
-                $eloquent[$i]->title,
-                $immutable[$i]->title,
-                "leftJoin() title at index {$i} differs"
-            );
-        }
+        $this->assertCollectionParity($eloquent, $immutable);
     }
 
     public function test_cross_join_parity(): void
@@ -260,7 +234,7 @@ class QueryBuilderAdvancedParityTest extends ParityTestCase
             ->orderBy('posts.id')
             ->get();
 
-        $this->assertEquals($eloquent->count(), $immutable->count(), 'crossJoin() count differs');
+        $this->assertCollectionParity($eloquent, $immutable);
     }
 
     public function test_join_with_closure_parity(): void
@@ -282,7 +256,7 @@ class QueryBuilderAdvancedParityTest extends ParityTestCase
             ->orderBy('posts.id')
             ->get();
 
-        $this->assertEquals($eloquent->count(), $immutable->count(), 'join() with closure count differs');
+        $this->assertCollectionParity($eloquent, $immutable);
     }
 
     // =========================================================================
@@ -304,20 +278,7 @@ class QueryBuilderAdvancedParityTest extends ParityTestCase
             ->orderBy('user_id')
             ->get();
 
-        $this->assertEquals($eloquent->count(), $immutable->count(), 'groupBy() count differs');
-
-        for ($i = 0; $i < $eloquent->count(); $i++) {
-            $this->assertEquals(
-                $eloquent[$i]->user_id,
-                $immutable[$i]->user_id,
-                "groupBy() user_id at index {$i} differs"
-            );
-            $this->assertEquals(
-                $eloquent[$i]->post_count,
-                $immutable[$i]->post_count,
-                "groupBy() post_count at index {$i} differs"
-            );
-        }
+        $this->assertCollectionParity($eloquent, $immutable);
     }
 
     public function test_group_by_multiple_columns_parity(): void
@@ -337,7 +298,7 @@ class QueryBuilderAdvancedParityTest extends ParityTestCase
             ->orderBy('published')
             ->get();
 
-        $this->assertEquals($eloquent->count(), $immutable->count(), 'groupBy() multiple columns count differs');
+        $this->assertCollectionParity($eloquent, $immutable);
     }
 
     // =========================================================================
@@ -350,6 +311,7 @@ class QueryBuilderAdvancedParityTest extends ParityTestCase
             ->selectRaw('COUNT(*) as post_count')
             ->groupBy('user_id')
             ->having('post_count', '>', 1)
+            ->orderBy('user_id')
             ->get();
 
         $immutable = ImmutablePost::query()
@@ -357,22 +319,10 @@ class QueryBuilderAdvancedParityTest extends ParityTestCase
             ->selectRaw('COUNT(*) as post_count')
             ->groupBy('user_id')
             ->having('post_count', '>', 1)
+            ->orderBy('user_id')
             ->get();
 
-        $this->assertEquals($eloquent->count(), $immutable->count(), 'having() count differs');
-
-        if ($eloquent->count() > 0) {
-            $this->assertEquals(
-                $eloquent->first()->user_id,
-                $immutable->first()->user_id,
-                'having() user_id differs'
-            );
-            $this->assertEquals(
-                $eloquent->first()->post_count,
-                $immutable->first()->post_count,
-                'having() post_count differs'
-            );
-        }
+        $this->assertCollectionParity($eloquent, $immutable);
     }
 
     public function test_having_raw_parity(): void
@@ -381,6 +331,7 @@ class QueryBuilderAdvancedParityTest extends ParityTestCase
             ->selectRaw('COUNT(*) as post_count')
             ->groupBy('user_id')
             ->havingRaw('COUNT(*) >= ?', [2])
+            ->orderBy('user_id')
             ->get();
 
         $immutable = ImmutablePost::query()
@@ -388,9 +339,10 @@ class QueryBuilderAdvancedParityTest extends ParityTestCase
             ->selectRaw('COUNT(*) as post_count')
             ->groupBy('user_id')
             ->havingRaw('COUNT(*) >= ?', [2])
+            ->orderBy('user_id')
             ->get();
 
-        $this->assertEquals($eloquent->count(), $immutable->count(), 'havingRaw() count differs');
+        $this->assertCollectionParity($eloquent, $immutable);
     }
 
     // =========================================================================
@@ -442,16 +394,19 @@ class QueryBuilderAdvancedParityTest extends ParityTestCase
             ->cursorPaginate(2, ['*'], 'cursor', $immutableCursor);
 
         $this->assertEquals(
-            count($eloquentSecond->items()),
-            count($immutableSecond->items()),
-            'cursorPaginate() second page item count differs'
-        );
-
-        $this->assertEquals(
             $eloquentSecond->hasMorePages(),
             $immutableSecond->hasMorePages(),
             'cursorPaginate() second page hasMorePages differs'
         );
+
+        // Compare all items
+        $eloquentItems = array_values($eloquentSecond->items());
+        $immutableItems = array_values($immutableSecond->items());
+        $this->assertCount(count($eloquentItems), $immutableItems);
+
+        for ($i = 0; $i < count($eloquentItems); $i++) {
+            $this->assertModelParity($eloquentItems[$i], $immutableItems[$i]);
+        }
     }
 
     // =========================================================================
@@ -512,11 +467,10 @@ class QueryBuilderAdvancedParityTest extends ParityTestCase
         $eloquent = EloquentUser::selectRaw('COUNT(*) as user_count')->first();
         $immutable = ImmutableUser::query()->selectRaw('COUNT(*) as user_count')->first();
 
-        $this->assertEquals(
-            $eloquent->user_count,
-            $immutable->user_count,
-            'selectRaw() count differs'
-        );
+        // Can't use assertModelParity here because selectRaw creates models without
+        // normal attributes, which triggers accessor errors. Compare raw attributes instead.
+        $this->assertEquals($eloquent->user_count, $immutable->user_count);
+        $this->assertEquals($eloquent->getAttributes(), $immutable->getAttributes());
     }
 
     public function test_where_raw_parity(): void

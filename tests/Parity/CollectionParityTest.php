@@ -105,10 +105,10 @@ class CollectionParityTest extends ParityTestCase
 
     public function test_all(): void
     {
-        $eloquent = EloquentUser::orderBy('id')->get()->all();
-        $immutable = ImmutableUser::query()->orderBy('id')->get()->all();
+        $eloquent = EloquentUser::orderBy('id')->get();
+        $immutable = ImmutableUser::query()->orderBy('id')->get();
 
-        $this->assertCount(count($eloquent), $immutable);
+        $this->assertCollectionParity($eloquent, $immutable);
     }
 
     // =========================================================================
@@ -117,72 +117,66 @@ class CollectionParityTest extends ParityTestCase
 
     public function test_filter(): void
     {
-        $eloquent = EloquentUser::all()->filter(fn($u) => $u->id > 1)->values();
-        $immutable = ImmutableUser::all()->filter(fn($u) => $u->id > 1)->values();
+        $eloquent = EloquentUser::orderBy('id')->get()->filter(fn($u) => $u->id > 1)->values();
+        $immutable = ImmutableUser::query()->orderBy('id')->get()->filter(fn($u) => $u->id > 1)->values();
 
-        $this->assertEquals($eloquent->count(), $immutable->count());
+        $this->assertCollectionParity($eloquent, $immutable);
     }
 
     public function test_reject(): void
     {
-        $eloquent = EloquentUser::all()->reject(fn($u) => $u->name === 'Alice')->values();
-        $immutable = ImmutableUser::all()->reject(fn($u) => $u->name === 'Alice')->values();
+        $eloquent = EloquentUser::orderBy('id')->get()->reject(fn($u) => $u->name === 'Alice')->values();
+        $immutable = ImmutableUser::query()->orderBy('id')->get()->reject(fn($u) => $u->name === 'Alice')->values();
 
-        $this->assertEquals($eloquent->count(), $immutable->count());
+        $this->assertCollectionParity($eloquent, $immutable);
     }
 
     public function test_where(): void
     {
-        $eloquent = EloquentUser::all()->where('name', 'Alice');
-        $immutable = ImmutableUser::all()->where('name', 'Alice');
+        $eloquent = EloquentUser::orderBy('id')->get()->where('name', 'Alice')->values();
+        $immutable = ImmutableUser::query()->orderBy('id')->get()->where('name', 'Alice')->values();
 
-        $this->assertEquals($eloquent->count(), $immutable->count());
+        $this->assertCollectionParity($eloquent, $immutable);
     }
 
     public function test_where_in(): void
     {
-        $eloquent = EloquentUser::all()->whereIn('id', [1, 2]);
-        $immutable = ImmutableUser::all()->whereIn('id', [1, 2]);
+        $eloquent = EloquentUser::orderBy('id')->get()->whereIn('id', [1, 2])->values();
+        $immutable = ImmutableUser::query()->orderBy('id')->get()->whereIn('id', [1, 2])->values();
 
-        $this->assertEquals($eloquent->count(), $immutable->count());
+        $this->assertCollectionParity($eloquent, $immutable);
     }
 
     public function test_where_not_in(): void
     {
-        $eloquent = EloquentUser::all()->whereNotIn('id', [1]);
-        $immutable = ImmutableUser::all()->whereNotIn('id', [1]);
+        $eloquent = EloquentUser::orderBy('id')->get()->whereNotIn('id', [1])->values();
+        $immutable = ImmutableUser::query()->orderBy('id')->get()->whereNotIn('id', [1])->values();
 
-        $this->assertEquals($eloquent->count(), $immutable->count());
+        $this->assertCollectionParity($eloquent, $immutable);
     }
 
     public function test_where_strict(): void
     {
-        $eloquent = EloquentUser::all()->whereStrict('id', 1);
-        $immutable = ImmutableUser::all()->whereStrict('id', 1);
+        $eloquent = EloquentUser::orderBy('id')->get()->whereStrict('id', 1)->values();
+        $immutable = ImmutableUser::query()->orderBy('id')->get()->whereStrict('id', 1)->values();
 
-        $this->assertEquals($eloquent->count(), $immutable->count());
-        if ($eloquent->count() > 0) {
-            $this->assertEquals(
-                $eloquent->first()->name,
-                $immutable->first()->name
-            );
-        }
+        $this->assertCollectionParity($eloquent, $immutable);
     }
 
     public function test_where_null(): void
     {
-        $eloquent = EloquentUser::all()->whereNull('email_verified_at');
-        $immutable = ImmutableUser::all()->whereNull('email_verified_at');
+        $eloquent = EloquentUser::orderBy('id')->get()->whereNull('email_verified_at')->values();
+        $immutable = ImmutableUser::query()->orderBy('id')->get()->whereNull('email_verified_at')->values();
 
-        $this->assertEquals($eloquent->count(), $immutable->count());
+        $this->assertCollectionParity($eloquent, $immutable);
     }
 
     public function test_where_not_null(): void
     {
-        $eloquent = EloquentUser::all()->whereNotNull('email_verified_at');
-        $immutable = ImmutableUser::all()->whereNotNull('email_verified_at');
+        $eloquent = EloquentUser::orderBy('id')->get()->whereNotNull('email_verified_at')->values();
+        $immutable = ImmutableUser::query()->orderBy('id')->get()->whereNotNull('email_verified_at')->values();
 
-        $this->assertEquals($eloquent->count(), $immutable->count());
+        $this->assertCollectionParity($eloquent, $immutable);
     }
 
     // =========================================================================
@@ -223,10 +217,10 @@ class CollectionParityTest extends ParityTestCase
 
     public function test_values(): void
     {
-        $eloquent = EloquentUser::all()->filter(fn($u) => $u->id > 1)->values();
-        $immutable = ImmutableUser::all()->filter(fn($u) => $u->id > 1)->values();
+        $eloquent = EloquentUser::orderBy('id')->get()->filter(fn($u) => $u->id > 1)->values();
+        $immutable = ImmutableUser::query()->orderBy('id')->get()->filter(fn($u) => $u->id > 1)->values();
 
-        $this->assertEquals($eloquent->count(), $immutable->count());
+        $this->assertCollectionParity($eloquent, $immutable);
     }
 
     // =========================================================================
@@ -302,7 +296,7 @@ class CollectionParityTest extends ParityTestCase
         $eloquent = EloquentUser::orderBy('id')->get()->take(2);
         $immutable = ImmutableUser::query()->orderBy('id')->get()->take(2);
 
-        $this->assertEquals($eloquent->count(), $immutable->count());
+        $this->assertCollectionParity($eloquent, $immutable);
     }
 
     public function test_skip(): void
@@ -310,19 +304,15 @@ class CollectionParityTest extends ParityTestCase
         $eloquent = EloquentUser::orderBy('id')->get()->skip(1)->values();
         $immutable = ImmutableUser::query()->orderBy('id')->get()->skip(1)->values();
 
-        $this->assertEquals($eloquent->count(), $immutable->count());
+        $this->assertCollectionParity($eloquent, $immutable);
     }
 
     public function test_slice(): void
     {
-        $eloquent = EloquentUser::orderBy('id')->get()->slice(1, 2);
-        $immutable = ImmutableUser::query()->orderBy('id')->get()->slice(1, 2);
+        $eloquent = EloquentUser::orderBy('id')->get()->slice(1, 2)->values();
+        $immutable = ImmutableUser::query()->orderBy('id')->get()->slice(1, 2)->values();
 
-        $this->assertEquals($eloquent->count(), $immutable->count());
-        // Compare values
-        $eloquentNames = $eloquent->pluck('name')->toArray();
-        $immutableNames = $immutable->pluck('name')->toArray();
-        $this->assertEquals($eloquentNames, $immutableNames);
+        $this->assertCollectionParity($eloquent, $immutable);
     }
 
     public function test_sort(): void
@@ -330,11 +320,7 @@ class CollectionParityTest extends ParityTestCase
         $eloquent = EloquentUser::all()->sort(fn($a, $b) => $b->id <=> $a->id)->values();
         $immutable = ImmutableUser::all()->sort(fn($a, $b) => $b->id <=> $a->id)->values();
 
-        $this->assertEquals($eloquent->count(), $immutable->count());
-        $this->assertEquals(
-            $eloquent->first()->name,
-            $immutable->first()->name
-        );
+        $this->assertCollectionParity($eloquent, $immutable);
     }
 
     public function test_flat_map(): void
@@ -356,10 +342,10 @@ class CollectionParityTest extends ParityTestCase
             'updated_at' => now(),
         ]);
 
-        $eloquent = EloquentUser::all()->unique('name');
-        $immutable = ImmutableUser::all()->unique('name');
+        $eloquent = EloquentUser::orderBy('id')->get()->unique('name')->values();
+        $immutable = ImmutableUser::query()->orderBy('id')->get()->unique('name')->values();
 
-        $this->assertEquals($eloquent->count(), $immutable->count());
+        $this->assertCollectionParity($eloquent, $immutable);
     }
 
     // =========================================================================
@@ -368,18 +354,30 @@ class CollectionParityTest extends ParityTestCase
 
     public function test_group_by(): void
     {
-        $eloquent = EloquentUser::all()->groupBy('name');
-        $immutable = ImmutableUser::all()->groupBy('name');
+        $eloquent = EloquentUser::orderBy('id')->get()->groupBy('name');
+        $immutable = ImmutableUser::query()->orderBy('id')->get()->groupBy('name');
 
+        // Verify keys match
         $this->assertEquals($eloquent->keys()->sort()->values()->toArray(), $immutable->keys()->sort()->values()->toArray());
+
+        // Verify each group has parity
+        foreach ($eloquent->keys() as $key) {
+            $this->assertCollectionParity($eloquent[$key], $immutable[$key]);
+        }
     }
 
     public function test_key_by(): void
     {
-        $eloquent = EloquentUser::all()->keyBy('id');
-        $immutable = ImmutableUser::all()->keyBy('id');
+        $eloquent = EloquentUser::orderBy('id')->get()->keyBy('id');
+        $immutable = ImmutableUser::query()->orderBy('id')->get()->keyBy('id');
 
+        // Verify keys match
         $this->assertEquals($eloquent->keys()->toArray(), $immutable->keys()->toArray());
+
+        // Verify each keyed item has parity
+        foreach ($eloquent->keys() as $key) {
+            $this->assertModelParity($eloquent[$key], $immutable[$key]);
+        }
     }
 
     // =========================================================================

@@ -123,6 +123,31 @@ class ImmutableQueryBuilder extends Builder
     }
 
     // =========================================================================
+    // SUBSELECT HANDLING
+    // =========================================================================
+
+    /**
+     * Add a subselect expression to the query.
+     *
+     * Ensures base table columns are selected before adding subselects,
+     * matching Laravel's withAggregate() behavior. Without this, queries
+     * using withCount() etc. would return ONLY the aggregate columns.
+     *
+     * @param \Closure|\Illuminate\Database\Query\Builder|\Illuminate\Database\Eloquent\Builder|string $query
+     * @param string $as
+     * @return $this
+     */
+    public function selectSub($query, $as): static
+    {
+        // Ensure base table columns are selected before adding subselects
+        if (is_null($this->query->columns)) {
+            $this->query->select($this->model->getTable().'.*');
+        }
+
+        return parent::selectSub($query, $as);
+    }
+
+    // =========================================================================
     // EAGER LOADING
     // =========================================================================
 

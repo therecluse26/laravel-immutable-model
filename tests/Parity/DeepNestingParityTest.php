@@ -91,11 +91,13 @@ class DeepNestingParityTest extends ParityTestCase
         $eloquent = EloquentCountry::with('suppliers')->find(1);
         $immutable = ImmutableCountry::with('suppliers')->find(1);
 
-        $this->assertEquals(
-            $eloquent->suppliers->count(),
-            $immutable->suppliers->count(),
-            'Supplier count mismatch'
-        );
+        // Verify country attributes
+        $this->assertModelParity($eloquent, $immutable, 'Country parity failed');
+
+        // Verify suppliers collection
+        $eloquentSuppliers = $eloquent->suppliers->sortBy('id')->values();
+        $immutableSuppliers = $immutable->suppliers->sortBy('id')->values();
+        $this->assertCollectionParity($eloquentSuppliers, $immutableSuppliers);
     }
 
     public function test_two_level_nesting_user_to_orders(): void
@@ -103,11 +105,13 @@ class DeepNestingParityTest extends ParityTestCase
         $eloquent = EloquentUser::with('orders')->find(1);
         $immutable = ImmutableUser::with('orders')->find(1);
 
-        $this->assertEquals(
-            $eloquent->orders->count(),
-            $immutable->orders->count(),
-            'Order count mismatch'
-        );
+        // Verify user attributes
+        $this->assertModelParity($eloquent, $immutable, 'User parity failed');
+
+        // Verify orders collection
+        $eloquentOrders = $eloquent->orders->sortBy('id')->values();
+        $immutableOrders = $immutable->orders->sortBy('id')->values();
+        $this->assertCollectionParity($eloquentOrders, $immutableOrders);
     }
 
     // =========================================================================
@@ -119,10 +123,21 @@ class DeepNestingParityTest extends ParityTestCase
         $eloquent = EloquentCountry::with('suppliers.users')->find(1);
         $immutable = ImmutableCountry::with('suppliers.users')->find(1);
 
-        $eloquentUserCount = $eloquent->suppliers->sum(fn($s) => $s->users->count());
-        $immutableUserCount = $immutable->suppliers->sum(fn($s) => $s->users->count());
+        // Verify country
+        $this->assertModelParity($eloquent, $immutable, 'Country parity failed');
 
-        $this->assertEquals($eloquentUserCount, $immutableUserCount, 'Nested user count mismatch');
+        // Verify each supplier and their users
+        $eloquentSuppliers = $eloquent->suppliers->sortBy('id')->values();
+        $immutableSuppliers = $immutable->suppliers->sortBy('id')->values();
+
+        $this->assertEquals($eloquentSuppliers->count(), $immutableSuppliers->count());
+        foreach ($eloquentSuppliers as $i => $eSupplier) {
+            $this->assertModelParity($eSupplier, $immutableSuppliers[$i], "Supplier {$i} parity failed");
+            $this->assertCollectionParity(
+                $eSupplier->users->sortBy('id')->values(),
+                $immutableSuppliers[$i]->users->sortBy('id')->values()
+            );
+        }
     }
 
     public function test_three_level_nesting_user_to_order_items(): void
@@ -130,10 +145,21 @@ class DeepNestingParityTest extends ParityTestCase
         $eloquent = EloquentUser::with('orders.items')->find(1);
         $immutable = ImmutableUser::with('orders.items')->find(1);
 
-        $eloquentItemCount = $eloquent->orders->sum(fn($o) => $o->items->count());
-        $immutableItemCount = $immutable->orders->sum(fn($o) => $o->items->count());
+        // Verify user
+        $this->assertModelParity($eloquent, $immutable, 'User parity failed');
 
-        $this->assertEquals($eloquentItemCount, $immutableItemCount, 'Nested item count mismatch');
+        // Verify each order and their items
+        $eloquentOrders = $eloquent->orders->sortBy('id')->values();
+        $immutableOrders = $immutable->orders->sortBy('id')->values();
+
+        $this->assertEquals($eloquentOrders->count(), $immutableOrders->count());
+        foreach ($eloquentOrders as $i => $eOrder) {
+            $this->assertModelParity($eOrder, $immutableOrders[$i], "Order {$i} parity failed");
+            $this->assertCollectionParity(
+                $eOrder->items->sortBy('id')->values(),
+                $immutableOrders[$i]->items->sortBy('id')->values()
+            );
+        }
     }
 
     public function test_three_level_nesting_order_item_to_product(): void
@@ -141,11 +167,14 @@ class DeepNestingParityTest extends ParityTestCase
         $eloquent = EloquentOrderItem::with('order.user')->find(1);
         $immutable = ImmutableOrderItem::with('order.user')->find(1);
 
-        $this->assertEquals(
-            $eloquent->order->user->name,
-            $immutable->order->user->name,
-            'Order user name mismatch'
-        );
+        // Verify order item
+        $this->assertModelParity($eloquent, $immutable, 'OrderItem parity failed');
+
+        // Verify nested order
+        $this->assertModelParity($eloquent->order, $immutable->order, 'Order parity failed');
+
+        // Verify nested user
+        $this->assertModelParity($eloquent->order->user, $immutable->order->user, 'User parity failed');
     }
 
     // =========================================================================
@@ -157,21 +186,29 @@ class DeepNestingParityTest extends ParityTestCase
         $eloquent = EloquentCountry::with('suppliers.users.orders')->find(1);
         $immutable = ImmutableCountry::with('suppliers.users.orders')->find(1);
 
-        $eloquentOrderCount = 0;
-        foreach ($eloquent->suppliers as $supplier) {
-            foreach ($supplier->users as $user) {
-                $eloquentOrderCount += $user->orders->count();
+        // Verify country
+        $this->assertModelParity($eloquent, $immutable, 'Country parity failed');
+
+        // Verify nested structure
+        $eloquentSuppliers = $eloquent->suppliers->sortBy('id')->values();
+        $immutableSuppliers = $immutable->suppliers->sortBy('id')->values();
+
+        $this->assertEquals($eloquentSuppliers->count(), $immutableSuppliers->count());
+        foreach ($eloquentSuppliers as $i => $eSupplier) {
+            $this->assertModelParity($eSupplier, $immutableSuppliers[$i], "Supplier {$i} parity failed");
+
+            $eUsers = $eSupplier->users->sortBy('id')->values();
+            $iUsers = $immutableSuppliers[$i]->users->sortBy('id')->values();
+            $this->assertEquals($eUsers->count(), $iUsers->count());
+
+            foreach ($eUsers as $j => $eUser) {
+                $this->assertModelParity($eUser, $iUsers[$j], "User {$j} parity failed");
+                $this->assertCollectionParity(
+                    $eUser->orders->sortBy('id')->values(),
+                    $iUsers[$j]->orders->sortBy('id')->values()
+                );
             }
         }
-
-        $immutableOrderCount = 0;
-        foreach ($immutable->suppliers as $supplier) {
-            foreach ($supplier->users as $user) {
-                $immutableOrderCount += $user->orders->count();
-            }
-        }
-
-        $this->assertEquals($eloquentOrderCount, $immutableOrderCount, '4-level order count mismatch');
     }
 
     public function test_four_level_nesting_order_item_to_supplier(): void
@@ -179,11 +216,11 @@ class DeepNestingParityTest extends ParityTestCase
         $eloquent = EloquentOrderItem::with('order.user.supplier')->find(1);
         $immutable = ImmutableOrderItem::with('order.user.supplier')->find(1);
 
-        $this->assertEquals(
-            $eloquent->order->user->supplier->name,
-            $immutable->order->user->supplier->name,
-            'Supplier name mismatch'
-        );
+        // Verify each level
+        $this->assertModelParity($eloquent, $immutable, 'OrderItem parity failed');
+        $this->assertModelParity($eloquent->order, $immutable->order, 'Order parity failed');
+        $this->assertModelParity($eloquent->order->user, $immutable->order->user, 'User parity failed');
+        $this->assertModelParity($eloquent->order->user->supplier, $immutable->order->user->supplier, 'Supplier parity failed');
     }
 
     // =========================================================================
@@ -195,25 +232,37 @@ class DeepNestingParityTest extends ParityTestCase
         $eloquent = EloquentCountry::with('suppliers.users.orders.items')->find(1);
         $immutable = ImmutableCountry::with('suppliers.users.orders.items')->find(1);
 
-        $eloquentItemCount = 0;
-        foreach ($eloquent->suppliers as $supplier) {
-            foreach ($supplier->users as $user) {
-                foreach ($user->orders as $order) {
-                    $eloquentItemCount += $order->items->count();
+        // Verify country
+        $this->assertModelParity($eloquent, $immutable, 'Country parity failed');
+
+        // Verify 5-level nested structure
+        $eloquentSuppliers = $eloquent->suppliers->sortBy('id')->values();
+        $immutableSuppliers = $immutable->suppliers->sortBy('id')->values();
+
+        $this->assertEquals($eloquentSuppliers->count(), $immutableSuppliers->count());
+        foreach ($eloquentSuppliers as $i => $eSupplier) {
+            $this->assertModelParity($eSupplier, $immutableSuppliers[$i], "Supplier {$i} parity failed");
+
+            $eUsers = $eSupplier->users->sortBy('id')->values();
+            $iUsers = $immutableSuppliers[$i]->users->sortBy('id')->values();
+            $this->assertEquals($eUsers->count(), $iUsers->count());
+
+            foreach ($eUsers as $j => $eUser) {
+                $this->assertModelParity($eUser, $iUsers[$j], "User {$j} parity failed");
+
+                $eOrders = $eUser->orders->sortBy('id')->values();
+                $iOrders = $iUsers[$j]->orders->sortBy('id')->values();
+                $this->assertEquals($eOrders->count(), $iOrders->count());
+
+                foreach ($eOrders as $k => $eOrder) {
+                    $this->assertModelParity($eOrder, $iOrders[$k], "Order {$k} parity failed");
+                    $this->assertCollectionParity(
+                        $eOrder->items->sortBy('id')->values(),
+                        $iOrders[$k]->items->sortBy('id')->values()
+                    );
                 }
             }
         }
-
-        $immutableItemCount = 0;
-        foreach ($immutable->suppliers as $supplier) {
-            foreach ($supplier->users as $user) {
-                foreach ($user->orders as $order) {
-                    $immutableItemCount += $order->items->count();
-                }
-            }
-        }
-
-        $this->assertEquals($eloquentItemCount, $immutableItemCount, '5-level item count mismatch');
     }
 
     public function test_five_level_nesting_order_item_to_country(): void
@@ -221,11 +270,12 @@ class DeepNestingParityTest extends ParityTestCase
         $eloquent = EloquentOrderItem::with('order.user.supplier.country')->find(1);
         $immutable = ImmutableOrderItem::with('order.user.supplier.country')->find(1);
 
-        $this->assertEquals(
-            $eloquent->order->user->supplier->country->name,
-            $immutable->order->user->supplier->country->name,
-            'Country name mismatch'
-        );
+        // Verify each level
+        $this->assertModelParity($eloquent, $immutable, 'OrderItem parity failed');
+        $this->assertModelParity($eloquent->order, $immutable->order, 'Order parity failed');
+        $this->assertModelParity($eloquent->order->user, $immutable->order->user, 'User parity failed');
+        $this->assertModelParity($eloquent->order->user->supplier, $immutable->order->user->supplier, 'Supplier parity failed');
+        $this->assertModelParity($eloquent->order->user->supplier->country, $immutable->order->user->supplier->country, 'Country parity failed');
     }
 
     // =========================================================================
@@ -242,10 +292,21 @@ class DeepNestingParityTest extends ParityTestCase
             'suppliers.users' => fn($q) => $q->where('name', 'like', 'John%'),
         ])->find(1);
 
-        $eloquentUserCount = $eloquent->suppliers->sum(fn($s) => $s->users->count());
-        $immutableUserCount = $immutable->suppliers->sum(fn($s) => $s->users->count());
+        // Verify country
+        $this->assertModelParity($eloquent, $immutable, 'Country parity failed');
 
-        $this->assertEquals($eloquentUserCount, $immutableUserCount, 'Constrained nested user count mismatch');
+        // Verify suppliers and constrained users
+        $eloquentSuppliers = $eloquent->suppliers->sortBy('id')->values();
+        $immutableSuppliers = $immutable->suppliers->sortBy('id')->values();
+
+        $this->assertEquals($eloquentSuppliers->count(), $immutableSuppliers->count());
+        foreach ($eloquentSuppliers as $i => $eSupplier) {
+            $this->assertModelParity($eSupplier, $immutableSuppliers[$i], "Supplier {$i} parity failed");
+            $this->assertCollectionParity(
+                $eSupplier->users->sortBy('id')->values(),
+                $immutableSuppliers[$i]->users->sortBy('id')->values()
+            );
+        }
     }
 
     public function test_constrained_deep_nesting_with_orders(): void
@@ -258,21 +319,29 @@ class DeepNestingParityTest extends ParityTestCase
             'suppliers.users.orders' => fn($q) => $q->where('status', 'completed'),
         ])->find(1);
 
-        $eloquentOrderCount = 0;
-        foreach ($eloquent->suppliers as $supplier) {
-            foreach ($supplier->users as $user) {
-                $eloquentOrderCount += $user->orders->count();
+        // Verify country
+        $this->assertModelParity($eloquent, $immutable, 'Country parity failed');
+
+        // Verify nested structure with constrained orders
+        $eloquentSuppliers = $eloquent->suppliers->sortBy('id')->values();
+        $immutableSuppliers = $immutable->suppliers->sortBy('id')->values();
+
+        $this->assertEquals($eloquentSuppliers->count(), $immutableSuppliers->count());
+        foreach ($eloquentSuppliers as $i => $eSupplier) {
+            $this->assertModelParity($eSupplier, $immutableSuppliers[$i], "Supplier {$i} parity failed");
+
+            $eUsers = $eSupplier->users->sortBy('id')->values();
+            $iUsers = $immutableSuppliers[$i]->users->sortBy('id')->values();
+            $this->assertEquals($eUsers->count(), $iUsers->count());
+
+            foreach ($eUsers as $j => $eUser) {
+                $this->assertModelParity($eUser, $iUsers[$j], "User {$j} parity failed");
+                $this->assertCollectionParity(
+                    $eUser->orders->sortBy('id')->values(),
+                    $iUsers[$j]->orders->sortBy('id')->values()
+                );
             }
         }
-
-        $immutableOrderCount = 0;
-        foreach ($immutable->suppliers as $supplier) {
-            foreach ($supplier->users as $user) {
-                $immutableOrderCount += $user->orders->count();
-            }
-        }
-
-        $this->assertEquals($eloquentOrderCount, $immutableOrderCount, 'Constrained deep order count mismatch');
     }
 
     // =========================================================================
@@ -284,14 +353,18 @@ class DeepNestingParityTest extends ParityTestCase
         $eloquent = EloquentUser::with('orders')->find(1);
         $immutable = ImmutableUser::with('orders')->find(1);
 
-        // Eager loaded orders
-        $this->assertEquals($eloquent->orders->count(), $immutable->orders->count());
+        // Verify user and eager loaded orders
+        $this->assertModelParity($eloquent, $immutable, 'User parity failed');
+        $this->assertCollectionParity(
+            $eloquent->orders->sortBy('id')->values(),
+            $immutable->orders->sortBy('id')->values()
+        );
 
         // Now lazy load items on the first order
-        $eloquentItems = $eloquent->orders->first()->items;
-        $immutableItems = $immutable->orders->first()->items;
+        $eloquentItems = $eloquent->orders->first()->items->sortBy('id')->values();
+        $immutableItems = $immutable->orders->first()->items->sortBy('id')->values();
 
-        $this->assertEquals($eloquentItems->count(), $immutableItems->count(), 'Lazy loaded items count mismatch');
+        $this->assertCollectionParity($eloquentItems, $immutableItems);
     }
 
     // =========================================================================
@@ -304,21 +377,35 @@ class DeepNestingParityTest extends ParityTestCase
         $eloquent = EloquentUser::with('orders.items')->find(3);
         $immutable = ImmutableUser::with('orders.items')->find(3);
 
-        $this->assertTrue($eloquent->orders->isEmpty() || $eloquent->orders->every(fn($o) => $o->items->isEmpty() || $o->items->isNotEmpty()));
-        $this->assertEquals($eloquent->orders->count(), $immutable->orders->count());
+        // Verify user
+        $this->assertModelParity($eloquent, $immutable, 'User parity failed');
+
+        // Verify empty or populated orders
+        $this->assertCollectionParity(
+            $eloquent->orders->sortBy('id')->values(),
+            $immutable->orders->sortBy('id')->values()
+        );
     }
 
     public function test_deep_nesting_with_no_records(): void
     {
-        // Canada (country 2) has supplier 3 with user 4 who has orders
-        // Let's check a user with no supplier
+        // User 1 has a supplier with a country
         $eloquent = EloquentUser::with('supplier.country')->find(1);
         $immutable = ImmutableUser::with('supplier.country')->find(1);
 
-        $this->assertEquals(
-            $eloquent->supplier->country->name ?? null,
-            $immutable->supplier->country->name ?? null,
-            'Deep country name mismatch'
-        );
+        // Verify each level
+        $this->assertModelParity($eloquent, $immutable, 'User parity failed');
+
+        if ($eloquent->supplier !== null) {
+            $this->assertModelParity($eloquent->supplier, $immutable->supplier, 'Supplier parity failed');
+
+            if ($eloquent->supplier->country !== null) {
+                $this->assertModelParity($eloquent->supplier->country, $immutable->supplier->country, 'Country parity failed');
+            } else {
+                $this->assertNull($immutable->supplier->country);
+            }
+        } else {
+            $this->assertNull($immutable->supplier);
+        }
     }
 }
