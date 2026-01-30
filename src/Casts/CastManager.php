@@ -79,17 +79,21 @@ class CastManager
     /**
      * Cast a value to an object.
      *
-     * @throws \JsonException If the string value is not valid JSON
+     * Returns null if the string value is not valid JSON (matches Eloquent behavior).
      */
-    private function castToObject(mixed $value): object
+    private function castToObject(mixed $value): ?object
     {
         if (is_object($value)) {
             return $value;
         }
 
         if (is_string($value)) {
-            $decoded = json_decode($value, false, 512, JSON_THROW_ON_ERROR);
-            return (object) $decoded;
+            $decoded = json_decode($value);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                return (object) $decoded;
+            }
+
+            return null;
         }
 
         return (object) $value;
@@ -98,16 +102,21 @@ class CastManager
     /**
      * Cast a value to an array.
      *
-     * @throws \JsonException If the string value is not valid JSON
+     * Returns null if the string value is not valid JSON (matches Eloquent behavior).
      */
-    private function castToArray(mixed $value): array
+    private function castToArray(mixed $value): ?array
     {
         if (is_array($value)) {
             return $value;
         }
 
         if (is_string($value)) {
-            return json_decode($value, true, 512, JSON_THROW_ON_ERROR);
+            $decoded = json_decode($value, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                return $decoded;
+            }
+
+            return null;
         }
 
         return (array) $value;
@@ -115,10 +124,12 @@ class CastManager
 
     /**
      * Cast a value to a Collection.
+     *
+     * Returns an empty Collection if the underlying array cast returns null.
      */
     private function castToCollection(mixed $value): Collection
     {
-        return new Collection($this->castToArray($value));
+        return new Collection($this->castToArray($value) ?? []);
     }
 
     /**

@@ -419,6 +419,56 @@ class ImmutableQueryBuilder extends Builder
         return $model;
     }
 
+    /**
+     * Get a single column's value from the first result of a query.
+     *
+     * @param string|\Illuminate\Contracts\Database\Query\Expression $column
+     * @return mixed
+     */
+    public function value($column)
+    {
+        $result = $this->first([$column]);
+
+        return $result?->getAttribute($column);
+    }
+
+    /**
+     * Execute the query and get the first result if it's the sole matching record.
+     *
+     * @param array<int, string>|string $columns
+     * @throws ModelNotFoundException
+     * @throws \Illuminate\Database\MultipleRecordsFoundException
+     */
+    public function sole($columns = ['*']): ImmutableModel
+    {
+        $result = $this->take(2)->get($columns);
+
+        $count = $result->count();
+
+        if ($count === 0) {
+            throw (new ModelNotFoundException())->setModel(get_class($this->model));
+        }
+
+        if ($count > 1) {
+            throw new \Illuminate\Database\MultipleRecordsFoundException($count);
+        }
+
+        return $result->first();
+    }
+
+    /**
+     * Add a basic where clause to the query and return the first result.
+     *
+     * @param \Closure|string|array $column
+     * @param mixed $operator
+     * @param mixed $value
+     * @param string $boolean
+     */
+    public function firstWhere($column, $operator = null, $value = null, $boolean = 'and'): ?ImmutableModel
+    {
+        return $this->where(...func_get_args())->first();
+    }
+
     // =========================================================================
     // HYDRATION
     // =========================================================================

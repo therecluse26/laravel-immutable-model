@@ -106,6 +106,65 @@ class QueryBuilderTest extends TestCase
         ImmutableUser::findOrFail(999);
     }
 
+    public function test_value_returns_single_column_value(): void
+    {
+        $name = ImmutableUser::where('id', 1)->value('name');
+
+        $this->assertEquals('Alice', $name);
+    }
+
+    public function test_value_returns_null_when_not_found(): void
+    {
+        $name = ImmutableUser::where('id', 999)->value('name');
+
+        $this->assertNull($name);
+    }
+
+    public function test_sole_returns_single_matching_record(): void
+    {
+        $user = ImmutableUser::where('name', 'Alice')->sole();
+
+        $this->assertInstanceOf(ImmutableUser::class, $user);
+        $this->assertEquals('Alice', $user->name);
+    }
+
+    public function test_sole_throws_when_not_found(): void
+    {
+        $this->expectException(ModelNotFoundException::class);
+
+        ImmutableUser::where('id', 999)->sole();
+    }
+
+    public function test_sole_throws_when_multiple_records_found(): void
+    {
+        $this->expectException(\Illuminate\Database\MultipleRecordsFoundException::class);
+
+        ImmutableUser::query()->sole();  // Returns all 3 users
+    }
+
+    public function test_first_where_returns_first_matching_record(): void
+    {
+        $user = ImmutableUser::firstWhere('name', 'Bob');
+
+        $this->assertInstanceOf(ImmutableUser::class, $user);
+        $this->assertEquals('Bob', $user->name);
+    }
+
+    public function test_first_where_returns_null_when_not_found(): void
+    {
+        $user = ImmutableUser::firstWhere('name', 'NonExistent');
+
+        $this->assertNull($user);
+    }
+
+    public function test_first_where_with_operator(): void
+    {
+        $user = ImmutableUser::firstWhere('id', '>', 2);
+
+        $this->assertInstanceOf(ImmutableUser::class, $user);
+        $this->assertEquals('Charlie', $user->name);
+    }
+
     // =========================================================================
     // WHERE CLAUSES
     // =========================================================================

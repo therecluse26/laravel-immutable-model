@@ -114,50 +114,48 @@ class CastingTest extends TestCase
     }
 
     // =========================================================================
-    // INVALID JSON HANDLING
+    // INVALID JSON HANDLING (matches Eloquent: returns null)
     // =========================================================================
 
-    public function test_cast_to_array_throws_on_invalid_json(): void
+    public function test_cast_to_array_returns_null_on_invalid_json(): void
     {
         TestCastableModel::$testCasts = ['value' => 'array'];
         $model = TestCastableModel::fromRow(['value' => 'not valid json']);
 
-        $this->expectException(\JsonException::class);
-        $model->value;
+        $this->assertNull($model->value);
     }
 
-    public function test_cast_to_json_throws_on_invalid_json(): void
+    public function test_cast_to_json_returns_null_on_invalid_json(): void
     {
         TestCastableModel::$testCasts = ['value' => 'json'];
         $model = TestCastableModel::fromRow(['value' => '{invalid}']);
 
-        $this->expectException(\JsonException::class);
-        $model->value;
+        $this->assertNull($model->value);
     }
 
-    public function test_cast_to_object_throws_on_invalid_json(): void
+    public function test_cast_to_object_returns_null_on_invalid_json(): void
     {
         TestCastableModel::$testCasts = ['value' => 'object'];
         $model = TestCastableModel::fromRow(['value' => 'comma,separated,string']);
 
-        $this->expectException(\JsonException::class);
-        $model->value;
+        $this->assertNull($model->value);
     }
 
-    public function test_cast_to_collection_throws_on_invalid_json(): void
+    public function test_cast_to_collection_returns_empty_on_invalid_json(): void
     {
         TestCastableModel::$testCasts = ['value' => 'collection'];
         $model = TestCastableModel::fromRow(['value' => '1,2,3']);
 
-        $this->expectException(\JsonException::class);
-        $model->value;
+        // Collection wraps null as empty collection
+        $this->assertInstanceOf(Collection::class, $model->value);
+        $this->assertTrue($model->value->isEmpty());
     }
 
     // =========================================================================
     // INVALID JSON - DATABASE INTEGRATION
     // =========================================================================
 
-    public function test_database_query_with_invalid_json_in_array_cast_column_throws(): void
+    public function test_database_query_with_invalid_json_returns_null(): void
     {
         // Simulate the real-world bug: database contains comma-separated string
         // in a column that's cast as 'array' (JSON)
@@ -173,9 +171,8 @@ class CastingTest extends TestCase
         // Query the database - this is the real-world path
         $user = ImmutableUser::find(999);
 
-        // Accessing the JSON-cast field should throw JsonException
-        $this->expectException(\JsonException::class);
-        $user->settings;
+        // Match Eloquent: invalid JSON returns null
+        $this->assertNull($user->settings);
     }
 
     // =========================================================================
