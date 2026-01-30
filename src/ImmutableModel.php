@@ -1497,7 +1497,7 @@ abstract class ImmutableModel implements ArrayAccess, JsonSerializable, Arrayabl
      */
     public function __unset(string $key): void
     {
-        unset($this->attributes[$key]);
+        unset($this->attributes[$key], $this->relations[$key]);
     }
 
     /**

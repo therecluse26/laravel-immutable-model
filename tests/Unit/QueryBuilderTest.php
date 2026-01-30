@@ -165,6 +165,44 @@ class QueryBuilderTest extends TestCase
         $this->assertEquals('Charlie', $user->name);
     }
 
+    public function test_value_or_fail_returns_value(): void
+    {
+        $name = ImmutableUser::where('id', 1)->valueOrFail('name');
+
+        $this->assertEquals('Alice', $name);
+    }
+
+    public function test_value_or_fail_throws_when_not_found(): void
+    {
+        $this->expectException(ModelNotFoundException::class);
+
+        ImmutableUser::where('id', 999)->valueOrFail('name');
+    }
+
+    public function test_find_many_returns_collection(): void
+    {
+        $users = ImmutableUser::findMany([1, 2]);
+
+        $this->assertInstanceOf(EloquentCollection::class, $users);
+        $this->assertCount(2, $users);
+        $this->assertEquals('Alice', $users->first()->name);
+    }
+
+    public function test_find_many_returns_empty_collection_for_empty_array(): void
+    {
+        $users = ImmutableUser::findMany([]);
+
+        $this->assertInstanceOf(EloquentCollection::class, $users);
+        $this->assertCount(0, $users);
+    }
+
+    public function test_find_many_ignores_missing_ids(): void
+    {
+        $users = ImmutableUser::findMany([1, 999, 2]);
+
+        $this->assertCount(2, $users);
+    }
+
     // =========================================================================
     // WHERE CLAUSES
     // =========================================================================

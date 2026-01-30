@@ -58,6 +58,11 @@ class ImmutableQueryBuilder extends Builder
     protected bool $withGlobalScopes = true;
 
     /**
+     * Whether global scopes have already been applied (for idempotence).
+     */
+    protected bool $scopesApplied = false;
+
+    /**
      * Create a new query builder instance.
      */
     public function __construct(ImmutableModel $model)
@@ -78,10 +83,13 @@ class ImmutableQueryBuilder extends Builder
 
     /**
      * Apply global scopes to the query.
+     *
+     * This method is idempotent - calling it multiple times has no effect after
+     * the first application.
      */
     public function applyGlobalScopes(): static
     {
-        if (! $this->withGlobalScopes) {
+        if (! $this->withGlobalScopes || $this->scopesApplied) {
             return $this;
         }
 
@@ -94,6 +102,8 @@ class ImmutableQueryBuilder extends Builder
             $scope = new $scopeClass();
             $scope->apply($this);
         }
+
+        $this->scopesApplied = true;
 
         return $this;
     }
@@ -237,8 +247,15 @@ class ImmutableQueryBuilder extends Builder
             $this->addHasOneCountSubquery($relation, $relationName);
         } elseif ($relation instanceof ImmutableBelongsToMany) {
             $this->addBelongsToManyCountSubquery($relation, $relationName);
+        } elseif ($relation instanceof ImmutableMorphMany) {
+            $this->addMorphManyCountSubquery($relation, $relationName);
+        } elseif ($relation instanceof ImmutableMorphOne) {
+            $this->addMorphOneCountSubquery($relation, $relationName);
+        } elseif ($relation instanceof ImmutableHasManyThrough) {
+            $this->addHasManyThroughCountSubquery($relation, $relationName);
+        } elseif ($relation instanceof ImmutableHasOneThrough) {
+            $this->addHasOneThroughCountSubquery($relation, $relationName);
         }
-        // Add more relation types as needed
     }
 
     /**
@@ -291,6 +308,92 @@ class ImmutableQueryBuilder extends Builder
             ->table($pivotTable)
             ->selectRaw('count(*)')
             ->whereColumn("{$pivotTable}.{$foreignPivotKey}", "{$parentTable}.{$parentKey}");
+
+        $this->selectSub($subquery, "{$relationName}_count");
+    }
+
+    /**
+     * Add a count subquery for MorphMany relation.
+     */
+    private function addMorphManyCountSubquery(ImmutableMorphMany $relation, string $relationName): void
+    {
+        $relatedTable = $relation->getRelatedTable();
+        $foreignKey = $relation->getForeignKeyName();
+        $localKey = $relation->getLocalKeyName();
+        $morphType = $relation->getMorphType();
+        $morphClass = $relation->getMorphClass();
+        $parentTable = $this->model->getTable();
+
+        $subquery = $this->model->getConnection()
+            ->table($relatedTable)
+            ->selectRaw('count(*)')
+            ->whereColumn("{$relatedTable}.{$foreignKey}", "{$parentTable}.{$localKey}")
+            ->where("{$relatedTable}.{$morphType}", '=', $morphClass);
+
+        $this->selectSub($subquery, "{$relationName}_count");
+    }
+
+    /**
+     * Add a count subquery for MorphOne relation.
+     */
+    private function addMorphOneCountSubquery(ImmutableMorphOne $relation, string $relationName): void
+    {
+        $relatedTable = $relation->getRelatedTable();
+        $foreignKey = $relation->getForeignKeyName();
+        $localKey = $relation->getLocalKeyName();
+        $morphType = $relation->getMorphType();
+        $morphClass = $relation->getMorphClass();
+        $parentTable = $this->model->getTable();
+
+        $subquery = $this->model->getConnection()
+            ->table($relatedTable)
+            ->selectRaw('count(*)')
+            ->whereColumn("{$relatedTable}.{$foreignKey}", "{$parentTable}.{$localKey}")
+            ->where("{$relatedTable}.{$morphType}", '=', $morphClass);
+
+        $this->selectSub($subquery, "{$relationName}_count");
+    }
+
+    /**
+     * Add a count subquery for HasManyThrough relation.
+     */
+    private function addHasManyThroughCountSubquery(ImmutableHasManyThrough $relation, string $relationName): void
+    {
+        $relatedTable = $relation->getRelatedTable();
+        $throughTable = $relation->getThroughTable();
+        $firstKey = $relation->getFirstKeyName();
+        $secondKey = $relation->getSecondKeyName();
+        $localKey = $relation->getLocalKeyName();
+        $secondLocalKey = $relation->getSecondLocalKeyName();
+        $parentTable = $this->model->getTable();
+
+        $subquery = $this->model->getConnection()
+            ->table($relatedTable)
+            ->selectRaw('count(*)')
+            ->join($throughTable, "{$relatedTable}.{$secondKey}", '=', "{$throughTable}.{$secondLocalKey}")
+            ->whereColumn("{$throughTable}.{$firstKey}", "{$parentTable}.{$localKey}");
+
+        $this->selectSub($subquery, "{$relationName}_count");
+    }
+
+    /**
+     * Add a count subquery for HasOneThrough relation.
+     */
+    private function addHasOneThroughCountSubquery(ImmutableHasOneThrough $relation, string $relationName): void
+    {
+        $relatedTable = $relation->getRelatedTable();
+        $throughTable = $relation->getThroughTable();
+        $firstKey = $relation->getFirstKeyName();
+        $secondKey = $relation->getSecondKeyName();
+        $localKey = $relation->getLocalKeyName();
+        $secondLocalKey = $relation->getSecondLocalKeyName();
+        $parentTable = $this->model->getTable();
+
+        $subquery = $this->model->getConnection()
+            ->table($relatedTable)
+            ->selectRaw('count(*)')
+            ->join($throughTable, "{$relatedTable}.{$secondKey}", '=', "{$throughTable}.{$secondLocalKey}")
+            ->whereColumn("{$throughTable}.{$firstKey}", "{$parentTable}.{$localKey}");
 
         $this->selectSub($subquery, "{$relationName}_count");
     }
@@ -467,6 +570,47 @@ class ImmutableQueryBuilder extends Builder
     public function firstWhere($column, $operator = null, $value = null, $boolean = 'and'): ?ImmutableModel
     {
         return $this->where(...func_get_args())->first();
+    }
+
+    /**
+     * Get a single column's value from the first result of a query or throw an exception.
+     *
+     * @param string|\Illuminate\Contracts\Database\Query\Expression $column
+     * @return mixed
+     * @throws ModelNotFoundException
+     */
+    public function valueOrFail($column)
+    {
+        $value = $this->value($column);
+
+        if ($value === null) {
+            throw (new ModelNotFoundException())->setModel(get_class($this->model));
+        }
+
+        return $value;
+    }
+
+    /**
+     * Find multiple models by their primary keys.
+     *
+     * @param \Illuminate\Contracts\Support\Arrayable|array $ids
+     * @param array<int, string>|string $columns
+     */
+    public function findMany($ids, $columns = ['*']): EloquentCollection
+    {
+        $ids = $ids instanceof \Illuminate\Contracts\Support\Arrayable ? $ids->toArray() : $ids;
+
+        if (empty($ids)) {
+            return new EloquentCollection();
+        }
+
+        $keyName = $this->model->getKeyName();
+
+        if ($keyName === null) {
+            throw ImmutableModelConfigurationException::missingPrimaryKey('findMany');
+        }
+
+        return $this->whereIn($keyName, $ids)->get($columns);
     }
 
     // =========================================================================

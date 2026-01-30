@@ -365,4 +365,52 @@ class ImmutableHasManyThrough
 
         return $this->getConstrainedQuery()->{$method}(...$parameters);
     }
+
+    /**
+     * Get the related model's table name.
+     */
+    public function getRelatedTable(): string
+    {
+        return (new $this->related())->getTable();
+    }
+
+    /**
+     * Get the intermediate (through) model's table name.
+     */
+    public function getThroughTable(): string
+    {
+        return (new $this->throughParent())->getTable();
+    }
+
+    /**
+     * Get the first key name (on the intermediate model).
+     */
+    public function getFirstKeyName(): string
+    {
+        return $this->firstKey;
+    }
+
+    /**
+     * Get the second key name (on the related model).
+     */
+    public function getSecondKeyName(): string
+    {
+        return $this->secondKey;
+    }
+
+    /**
+     * Get the local key name (on the far parent).
+     */
+    public function getLocalKeyName(): string
+    {
+        return $this->localKey;
+    }
+
+    /**
+     * Get the second local key name (on the intermediate model).
+     */
+    public function getSecondLocalKeyName(): string
+    {
+        return $this->secondLocalKey;
+    }
 }

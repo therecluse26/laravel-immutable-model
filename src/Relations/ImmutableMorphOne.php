@@ -255,4 +255,20 @@ class ImmutableMorphOne
     {
         return $this->foreignKey;
     }
+
+    /**
+     * Get the local key column name.
+     */
+    public function getLocalKeyName(): string
+    {
+        return $this->localKey;
+    }
+
+    /**
+     * Get the related model's table name.
+     */
+    public function getRelatedTable(): string
+    {
+        return (new $this->related())->getTable();
+    }
 }
