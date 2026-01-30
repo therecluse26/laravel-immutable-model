@@ -8,6 +8,8 @@ use ArrayAccess;
 use Brighten\ImmutableModel\Casts\CastManager;
 use Brighten\ImmutableModel\Exceptions\ImmutableModelConfigurationException;
 use Brighten\ImmutableModel\Exceptions\ImmutableModelViolationException;
+use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\InvalidCastException;
 use Brighten\ImmutableModel\Relations\ImmutableBelongsTo;
 use Brighten\ImmutableModel\Relations\ImmutableBelongsToMany;
 use Brighten\ImmutableModel\Relations\ImmutableHasMany;
@@ -26,6 +28,9 @@ use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Model as EloquentModel;
 use Illuminate\Support\Str;
 use JsonSerializable;
+use LogicException;
+use ReflectionMethod;
+use ReflectionNamedType;
 use stdClass;
 
 /**
@@ -39,6 +44,20 @@ use stdClass;
  */
 abstract class ImmutableModel implements ArrayAccess, JsonSerializable, Arrayable, Jsonable
 {
+    /**
+     * The name of the "created at" column.
+     *
+     * @var string|null
+     */
+    const CREATED_AT = 'created_at';
+
+    /**
+     * The name of the "updated at" column.
+     *
+     * @var string|null
+     */
+    const UPDATED_AT = 'updated_at';
+
     /**
      * The database table associated with the model.
      */
@@ -129,6 +148,54 @@ abstract class ImmutableModel implements ArrayAccess, JsonSerializable, Arrayabl
      * @var array<class-string, class-string<ImmutableModelScope>>
      */
     protected static array $globalScopes = [];
+
+    /**
+     * The built-in, primitive cast types supported by Eloquent.
+     *
+     * @var string[]
+     */
+    protected static $primitiveCastTypes = [
+        'array',
+        'bool',
+        'boolean',
+        'collection',
+        'custom_datetime',
+        'date',
+        'datetime',
+        'decimal',
+        'double',
+        'encrypted',
+        'encrypted:array',
+        'encrypted:collection',
+        'encrypted:json',
+        'encrypted:object',
+        'float',
+        'hashed',
+        'immutable_date',
+        'immutable_datetime',
+        'immutable_custom_datetime',
+        'int',
+        'integer',
+        'json',
+        'object',
+        'real',
+        'string',
+        'timestamp',
+    ];
+
+    /**
+     * The cache of the "Attribute" return type marked mutated attributes for each class.
+     *
+     * @var array
+     */
+    protected static $attributeMutatorCache = [];
+
+    /**
+     * The cache of the "Attribute" return type marked mutated, gettable attributes for each class.
+     *
+     * @var array
+     */
+    protected static $getAttributeMutatorCache = [];
 
     /**
      * The cast manager instance.
@@ -309,27 +376,99 @@ abstract class ImmutableModel implements ArrayAccess, JsonSerializable, Arrayabl
     }
 
     /**
-     * Determine if the given attribute has a cast.
+     * Determine whether an attribute should be cast to a native type.
      *
-     * This method is required for Laravel's Builder pluck() compatibility.
+     * @param  string  $key
+     * @param  array|string|null  $types
+     * @return bool
      */
-    public function hasCast(string $key, $types = null): bool
+    public function hasCast($key, $types = null)
     {
-        if (! array_key_exists($key, $this->casts)) {
-            return false;
+        if (array_key_exists($key, $this->getCasts())) {
+            return $types ? in_array($this->getCastType($key), (array) $types, true) : true;
         }
 
-        if ($types === null) {
-            return true;
-        }
-
-        $types = is_array($types) ? $types : [$types];
-
-        return in_array($this->casts[$key], $types, true);
+        return false;
     }
 
     /**
+     * Get the type of cast for a model attribute.
+     *
+     * @param  string  $key
+     * @return string
+     */
+    protected function getCastType($key)
+    {
+        $castType = $this->getCasts()[$key];
+
+        if ($this->isCustomDateTimeCast($castType)) {
+            return 'custom_datetime';
+        }
+
+        if ($this->isImmutableCustomDateTimeCast($castType)) {
+            return 'immutable_custom_datetime';
+        }
+
+        if ($this->isDecimalCast($castType)) {
+            return 'decimal';
+        }
+
+        if (class_exists($castType)) {
+            return $castType;
+        }
+
+        return trim(strtolower($castType));
+    }
+
+    /**
+     * Determine if the cast type is a custom date time cast.
+     *
+     * @param  string  $cast
+     * @return bool
+     */
+    protected function isCustomDateTimeCast($cast)
+    {
+        return str_starts_with($cast, 'date:') ||
+                str_starts_with($cast, 'datetime:');
+    }
+
+    /**
+     * Determine if the cast type is an immutable custom date time cast.
+     *
+     * @param  string  $cast
+     * @return bool
+     */
+    protected function isImmutableCustomDateTimeCast($cast)
+    {
+        return str_starts_with($cast, 'immutable_date:') ||
+                str_starts_with($cast, 'immutable_datetime:');
+    }
+
+    /**
+     * Determine if the cast type is a decimal cast.
+     *
+     * @param  string  $cast
+     * @return bool
+     */
+    protected function isDecimalCast($cast)
+    {
+        return str_starts_with($cast, 'decimal:');
+    }
+
+    /**
+     * Indicates if the model should be timestamped.
+     *
+     * This property enables automatic date casting for created_at/updated_at columns
+     * without requiring explicit casts. Matches Eloquent's behavior.
+     */
+    public $timestamps = true;
+
+    /**
      * Get the attributes that should be converted to dates.
+     *
+     * This method matches Eloquent's getDates() behavior: it returns the timestamp
+     * columns (created_at, updated_at) if timestamps are enabled. Columns with
+     * explicit datetime casts in $casts don't need to be listed here.
      *
      * This method is required for Laravel's Builder pluck() compatibility.
      *
@@ -337,16 +476,15 @@ abstract class ImmutableModel implements ArrayAccess, JsonSerializable, Arrayabl
      */
     public function getDates(): array
     {
-        // Return attribute names that have datetime casts
-        $dates = [];
-
-        foreach ($this->casts as $key => $cast) {
-            if (in_array($cast, ['datetime', 'date', 'immutable_datetime', 'immutable_date'], true)) {
-                $dates[] = $key;
-            }
+        // Match Eloquent: return timestamp columns only
+        if ($this->timestamps) {
+            return [
+                $this->getCreatedAtColumn(),
+                $this->getUpdatedAtColumn(),
+            ];
         }
 
-        return $dates;
+        return [];
     }
 
     /**
@@ -354,19 +492,24 @@ abstract class ImmutableModel implements ArrayAccess, JsonSerializable, Arrayabl
      *
      * This method is required for Eloquent's latest() and oldest() methods.
      */
-    public function getCreatedAtColumn(): string
+    /**
+     * Get the name of the "created at" column.
+     *
+     * @return string|null
+     */
+    public function getCreatedAtColumn()
     {
-        return 'created_at';
+        return static::CREATED_AT;
     }
 
     /**
      * Get the name of the "updated at" column.
      *
-     * This method is provided for consistency with Eloquent's API.
+     * @return string|null
      */
-    public function getUpdatedAtColumn(): string
+    public function getUpdatedAtColumn()
     {
-        return 'updated_at';
+        return static::UPDATED_AT;
     }
 
     /**
@@ -645,26 +788,46 @@ abstract class ImmutableModel implements ArrayAccess, JsonSerializable, Arrayabl
 
     /**
      * Get an attribute from the model.
+     *
+     * @param  string  $key
+     * @return mixed
      */
-    public function getAttribute(string $key): mixed
+    public function getAttribute($key)
     {
-        // Check for accessor method
-        if ($this->hasAccessor($key)) {
-            return $this->callAccessor($key);
+        if (! $key) {
+            return;
         }
 
-        // Check if it's a relation
-        if ($this->relationLoaded($key)) {
-            return $this->getRelation($key);
+        // If the attribute exists in the attribute array or has a "get" mutator we will
+        // get the attribute's value. Otherwise, we will proceed as if the developers
+        // are asking for a relationship's value. This covers both types of values.
+        if ($this->hasAttribute($key)) {
+            return $this->getAttributeValue($key);
         }
 
-        // Check if it's a relation method
-        if (method_exists($this, $key)) {
-            return $this->getRelationValue($key);
+        // Here we will determine if the model base class itself contains this given key
+        // since we don't want to treat any of those methods as relationships because
+        // they are all intended as helper methods and none of these are relations.
+        if (method_exists(self::class, $key)) {
+            return $this->throwMissingAttributeExceptionIfApplicable($key);
         }
 
-        // Return the raw or cast attribute
-        return $this->getAttributeValue($key);
+        return $this->isRelation($key) || $this->relationLoaded($key)
+                    ? $this->getRelationValue($key)
+                    : $this->throwMissingAttributeExceptionIfApplicable($key);
+    }
+
+    /**
+     * Either throw a missing attribute exception or return null depending on Eloquent's configuration.
+     *
+     * ImmutableModel does not track $exists state, so this always returns null.
+     *
+     * @param  string  $key
+     * @return null
+     */
+    protected function throwMissingAttributeExceptionIfApplicable($key)
+    {
+        return null;
     }
 
     /**
@@ -718,19 +881,114 @@ abstract class ImmutableModel implements ArrayAccess, JsonSerializable, Arrayabl
     }
 
     /**
-     * Get the attribute value with casting applied.
+     * Get a plain attribute (not a relationship).
+     *
+     * @param  string  $key
+     * @return mixed
      */
-    protected function getAttributeValue(string $key): mixed
+    public function getAttributeValue($key)
     {
-        $value = $this->attributes[$key] ?? null;
+        return $this->transformModelValue($key, $this->getAttributeFromArray($key));
+    }
 
-        // Apply cast if defined
-        $casts = $this->getCasts();
-        if (isset($casts[$key])) {
-            return $this->getCastManager()->cast($key, $value, $casts[$key]);
+    /**
+     * Get an attribute from the $attributes array.
+     *
+     * @param  string  $key
+     * @return mixed
+     */
+    protected function getAttributeFromArray($key)
+    {
+        return $this->getAttributes()[$key] ?? null;
+    }
+
+    /**
+     * Transform a raw model value using mutators, casts, etc.
+     *
+     * @param  string  $key
+     * @param  mixed  $value
+     * @return mixed
+     */
+    protected function transformModelValue($key, $value)
+    {
+        // If the attribute has a get mutator, we will call that then return what
+        // it returns as the value, which is useful for transforming values on
+        // retrieval from the model to a form that is more useful for usage.
+        if ($this->hasGetMutator($key)) {
+            return $this->mutateAttribute($key, $value);
+        } elseif ($this->hasAttributeGetMutator($key)) {
+            return $this->mutateAttributeMarkedAttribute($key, $value);
+        }
+
+        // If the attribute exists within the cast array, we will convert it to
+        // an appropriate native PHP type dependent upon the associated value
+        // given with the key in the pair. Dayle made this comment line up.
+        if ($this->hasCast($key)) {
+            return $this->castAttribute($key, $value);
+        }
+
+        // If the attribute is listed as a date, we will convert it to a DateTime
+        // instance on retrieval, which makes it quite convenient to work with
+        // date fields without having to create a mutator for each property.
+        if ($value !== null
+            && \in_array($key, $this->getDates(), false)) {
+            return $this->asDateTime($value);
         }
 
         return $value;
+    }
+
+    /**
+     * Get the value of an attribute using its mutator.
+     *
+     * @param  string  $key
+     * @param  mixed  $value
+     * @return mixed
+     */
+    protected function mutateAttribute($key, $value)
+    {
+        return $this->{'get'.Str::studly($key).'Attribute'}($value);
+    }
+
+    /**
+     * Get the value of an "Attribute" return type marked attribute using its mutator.
+     *
+     * @param  string  $key
+     * @param  mixed  $value
+     * @return mixed
+     */
+    protected function mutateAttributeMarkedAttribute($key, $value)
+    {
+        $attribute = $this->{Str::camel($key)}();
+
+        $value = call_user_func($attribute->get ?: function ($value) {
+            return $value;
+        }, $value, $this->attributes);
+
+        return $value;
+    }
+
+    /**
+     * Cast an attribute to a native PHP type.
+     *
+     * @param  string  $key
+     * @param  mixed  $value
+     * @return mixed
+     */
+    protected function castAttribute($key, $value)
+    {
+        return $this->getCastManager()->cast($key, $value, $this->getCasts()[$key]);
+    }
+
+    /**
+     * Return a timestamp as DateTime object.
+     *
+     * @param  mixed  $value
+     * @return \Illuminate\Support\Carbon
+     */
+    protected function asDateTime($value)
+    {
+        return $this->getCastManager()->castDate($value);
     }
 
     /**
@@ -744,11 +1002,156 @@ abstract class ImmutableModel implements ArrayAccess, JsonSerializable, Arrayabl
     }
 
     /**
+     * Determine whether an attribute exists on the model.
+     *
+     * @param  string  $key
+     * @return bool
+     */
+    public function hasAttribute($key)
+    {
+        if (! $key) {
+            return false;
+        }
+
+        return array_key_exists($key, $this->attributes) ||
+            array_key_exists($key, $this->casts) ||
+            $this->hasGetMutator($key) ||
+            $this->hasAttributeMutator($key) ||
+            $this->isClassCastable($key);
+    }
+
+    /**
+     * Determine if a get mutator exists for an attribute.
+     *
+     * @param  string  $key
+     * @return bool
+     */
+    public function hasGetMutator($key)
+    {
+        return method_exists($this, 'get'.Str::studly($key).'Attribute');
+    }
+
+    /**
+     * Determine if a "Attribute" return type marked mutator exists for an attribute.
+     *
+     * @param  string  $key
+     * @return bool
+     */
+    public function hasAttributeMutator($key)
+    {
+        if (isset(static::$attributeMutatorCache[get_class($this)][$key])) {
+            return static::$attributeMutatorCache[get_class($this)][$key];
+        }
+
+        if (! method_exists($this, $method = Str::camel($key))) {
+            return static::$attributeMutatorCache[get_class($this)][$key] = false;
+        }
+
+        $returnType = (new ReflectionMethod($this, $method))->getReturnType();
+
+        return static::$attributeMutatorCache[get_class($this)][$key] =
+                    $returnType instanceof ReflectionNamedType &&
+                    $returnType->getName() === Attribute::class;
+    }
+
+    /**
+     * Determine if a "Attribute" return type marked get mutator exists for an attribute.
+     *
+     * @param  string  $key
+     * @return bool
+     */
+    public function hasAttributeGetMutator($key)
+    {
+        if (isset(static::$getAttributeMutatorCache[get_class($this)][$key])) {
+            return static::$getAttributeMutatorCache[get_class($this)][$key];
+        }
+
+        if (! $this->hasAttributeMutator($key)) {
+            return static::$getAttributeMutatorCache[get_class($this)][$key] = false;
+        }
+
+        return static::$getAttributeMutatorCache[get_class($this)][$key] = is_callable($this->{Str::camel($key)}()->get);
+    }
+
+    /**
+     * Determine if the given key is cast using a custom class.
+     *
+     * @param  string  $key
+     * @return bool
+     *
+     * @throws \Illuminate\Database\Eloquent\InvalidCastException
+     */
+    protected function isClassCastable($key)
+    {
+        $casts = $this->getCasts();
+
+        if (! array_key_exists($key, $casts)) {
+            return false;
+        }
+
+        $castType = $this->parseCasterClass($casts[$key]);
+
+        if (in_array($castType, static::$primitiveCastTypes)) {
+            return false;
+        }
+
+        if (class_exists($castType)) {
+            return true;
+        }
+
+        throw new InvalidCastException($this, $key, $castType);
+    }
+
+    /**
+     * Parse the given caster class, removing any arguments.
+     *
+     * @param  string  $class
+     * @return string
+     */
+    protected function parseCasterClass($class)
+    {
+        return ! str_contains($class, ':')
+            ? $class
+            : explode(':', $class, 2)[0];
+    }
+
+    /**
+     * Determine if the given key is a relationship method on the model.
+     *
+     * @param  string  $key
+     * @return bool
+     */
+    public function isRelation($key)
+    {
+        if ($this->hasAttributeMutator($key)) {
+            return false;
+        }
+
+        return method_exists($this, $key) ||
+               $this->relationResolver(static::class, $key);
+    }
+
+    /**
+     * Get the dynamic relation resolver if defined or inherited, or return null.
+     *
+     * @param  string  $class
+     * @param  string  $key
+     * @return mixed
+     */
+    public function relationResolver($class, $key)
+    {
+        // ImmutableModel does not support dynamic relation resolvers
+        return null;
+    }
+
+    /**
      * Check if the model has an accessor for an attribute.
+     *
+     * @deprecated Use hasGetMutator() instead
      */
     protected function hasAccessor(string $key): bool
     {
-        return method_exists($this, 'get' . Str::studly($key) . 'Attribute');
+        return $this->hasGetMutator($key);
     }
 
     /**
@@ -772,40 +1175,78 @@ abstract class ImmutableModel implements ArrayAccess, JsonSerializable, Arrayabl
     /**
      * Get a specified relationship.
      */
+    /**
+     * Get a loaded relation.
+     *
+     * Matches Eloquent's behavior: throws if relation isn't loaded.
+     * Use relationLoaded() first to check if a relation is available.
+     */
     public function getRelation(string $relation): mixed
     {
-        return $this->relations[$relation] ?? null;
+        return $this->relations[$relation];
     }
 
     /**
-     * Get a relationship value from a method.
+     * Get a relationship.
+     *
+     * @param  string  $key
+     * @return mixed
      */
-    protected function getRelationValue(string $key): mixed
+    public function getRelationValue($key)
     {
+        // If the key already exists in the relationships array, it just means the
+        // relationship has already been loaded, so we'll just return it out of
+        // here because there is no need to query within the relations twice.
         if ($this->relationLoaded($key)) {
             return $this->relations[$key];
         }
 
-        // Load the relation
-        $relation = $this->{$key}();
-
-        if ($relation instanceof ImmutableBelongsTo ||
-            $relation instanceof ImmutableHasOne ||
-            $relation instanceof ImmutableHasMany ||
-            $relation instanceof ImmutableBelongsToMany ||
-            $relation instanceof ImmutableHasOneThrough ||
-            $relation instanceof ImmutableHasManyThrough ||
-            $relation instanceof ImmutableMorphOne ||
-            $relation instanceof ImmutableMorphMany ||
-            $relation instanceof ImmutableMorphTo ||
-            $relation instanceof ImmutableMorphToMany) {
-            $result = $relation->getResults();
-            $this->setRelationInternal($key, $result);
-
-            return $result;
+        if (! $this->isRelation($key)) {
+            return;
         }
 
-        return null;
+        // If the "attribute" exists as a method on the model, we will just assume
+        // it is a relationship and will load and return results from the query
+        // and hydrate the relationship's value on the "relationships" array.
+        return $this->getRelationshipFromMethod($key);
+    }
+
+    /**
+     * Get a relationship value from a method.
+     *
+     * @param  string  $method
+     * @return mixed
+     *
+     * @throws \LogicException
+     */
+    protected function getRelationshipFromMethod($method)
+    {
+        $relation = $this->$method();
+
+        if (! $relation instanceof ImmutableBelongsTo &&
+            ! $relation instanceof ImmutableHasOne &&
+            ! $relation instanceof ImmutableHasMany &&
+            ! $relation instanceof ImmutableBelongsToMany &&
+            ! $relation instanceof ImmutableHasOneThrough &&
+            ! $relation instanceof ImmutableHasManyThrough &&
+            ! $relation instanceof ImmutableMorphOne &&
+            ! $relation instanceof ImmutableMorphMany &&
+            ! $relation instanceof ImmutableMorphTo &&
+            ! $relation instanceof ImmutableMorphToMany) {
+            if (is_null($relation)) {
+                throw new LogicException(sprintf(
+                    '%s::%s must return a relationship instance, but "null" was returned. Was the "return" keyword used?', static::class, $method
+                ));
+            }
+
+            throw new LogicException(sprintf(
+                '%s::%s must return a relationship instance.', static::class, $method
+            ));
+        }
+
+        return tap($relation->getResults(), function ($results) use ($method) {
+            $this->setRelation($method, $results);
+        });
     }
 
     /**
@@ -1317,7 +1758,13 @@ abstract class ImmutableModel implements ArrayAccess, JsonSerializable, Arrayabl
      *
      * @return array<string, mixed>
      */
-    protected function attributesToArray(): array
+    /**
+     * Get the model's attributes as an array.
+     *
+     * Includes cast attributes, accessors (from $appends), respects $visible/$hidden.
+     * Does NOT include relations.
+     */
+    public function attributesToArray(): array
     {
         $attributes = [];
 
@@ -1412,7 +1859,12 @@ abstract class ImmutableModel implements ArrayAccess, JsonSerializable, Arrayabl
      *
      * @return array<string, mixed>
      */
-    protected function relationsToArray(): array
+    /**
+     * Get the model's relations as an array.
+     *
+     * Returns all loaded relations serialized to arrays.
+     */
+    public function relationsToArray(): array
     {
         $relations = [];
 

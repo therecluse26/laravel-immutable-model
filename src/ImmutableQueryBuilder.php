@@ -620,13 +620,18 @@ class ImmutableQueryBuilder extends Builder
     /**
      * Hydrate a model from row data.
      *
+     * Uses newFromBuilder to properly set the connection from the query builder,
+     * matching Eloquent's hydration behavior.
+     *
      * @param array<string, mixed> $row
      */
     private function hydrateModel(array $row): ImmutableModel
     {
-        $class = get_class($this->model);
+        // Get the connection name from the underlying query connection
+        // This ensures models know which connection they were loaded from
+        $connectionName = $this->query->getConnection()->getName();
 
-        return $class::fromRow($row);
+        return $this->model->newFromBuilder($row, $connectionName);
     }
 
     /**
