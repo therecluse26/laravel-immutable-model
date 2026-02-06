@@ -25,13 +25,13 @@ use Brighten\ImmutableModel\Relations\ImmutableHasMany;
  */
 class ImmutableOrder extends ImmutableModel
 {
-    protected string $table = 'orders';
+    protected $table = 'orders';
 
-    protected ?string $primaryKey = 'id';
+    protected $primaryKey = 'id';
 
-    protected string $keyType = 'int';
+    protected $keyType = 'int';
 
-    protected array $casts = [
+    protected $casts = [
         'user_id' => 'int',
         'total' => 'float',
         'created_at' => 'datetime',

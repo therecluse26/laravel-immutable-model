@@ -28,9 +28,9 @@ class ImmutableModelViolationException extends LogicException
     /**
      * Create exception for relation mutation attempt.
      */
-    public static function relationMutation(string $relation): self
+    public static function relationMutation(string $method): self
     {
-        return new self("Cannot set relation [{$relation}] on an immutable model.");
+        return new self("Cannot call [{$method}] on an immutable relation. Relations of immutable models are read-only.");
     }
 
     /**

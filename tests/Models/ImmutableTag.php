@@ -18,13 +18,13 @@ use Brighten\ImmutableModel\Relations\ImmutableMorphToMany;
  */
 class ImmutableTag extends ImmutableModel
 {
-    protected string $table = 'tags';
+    protected $table = 'tags';
 
-    protected ?string $primaryKey = 'id';
+    protected $primaryKey = 'id';
 
-    protected string $keyType = 'int';
+    protected $keyType = 'int';
 
-    protected array $casts = [
+    protected $casts = [
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
@@ -42,7 +42,8 @@ class ImmutableTag extends ImmutableModel
      */
     public function taggablePosts(): ImmutableMorphToMany
     {
-        return $this->morphedByMany(ImmutablePost::class, 'taggable')
+        // Explicitly specify 'tag_id' since Eloquent would derive 'immutable_tag_id' from class name
+        return $this->morphedByMany(ImmutablePost::class, 'taggable', 'taggables', 'tag_id')
             ->withTimestamps();
     }
 
@@ -51,6 +52,7 @@ class ImmutableTag extends ImmutableModel
      */
     public function taggableUsers(): ImmutableMorphToMany
     {
-        return $this->morphedByMany(ImmutableUser::class, 'taggable');
+        // Explicitly specify 'tag_id' since Eloquent would derive 'immutable_tag_id' from class name
+        return $this->morphedByMany(ImmutableUser::class, 'taggable', 'taggables', 'tag_id');
     }
 }

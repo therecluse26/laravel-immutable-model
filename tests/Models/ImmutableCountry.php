@@ -19,13 +19,13 @@ use Brighten\ImmutableModel\Relations\ImmutableHasOneThrough;
  */
 class ImmutableCountry extends ImmutableModel
 {
-    protected string $table = 'countries';
+    protected $table = 'countries';
 
-    protected ?string $primaryKey = 'id';
+    protected $primaryKey = 'id';
 
-    protected string $keyType = 'int';
+    protected $keyType = 'int';
 
-    protected array $casts = [
+    protected $casts = [
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];

@@ -5,15 +5,15 @@ declare(strict_types=1);
 namespace Brighten\ImmutableModel\Relations;
 
 use Brighten\ImmutableModel\Exceptions\ImmutableModelViolationException;
-use Illuminate\Database\Eloquent\Relations\Pivot;
+use Illuminate\Database\Eloquent\Relations\MorphPivot;
 
 /**
- * Immutable Pivot model.
+ * Immutable MorphPivot for polymorphic many-to-many relationships.
  *
- * Extends Eloquent's Pivot for full read compatibility while
- * blocking all mutation operations.
+ * Extends Eloquent's MorphPivot to block all persistence operations
+ * while maintaining full read compatibility.
  */
-class ImmutablePivot extends Pivot
+class ImmutableMorphPivot extends MorphPivot
 {
     /**
      * Disable timestamps auto-updating.

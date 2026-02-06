@@ -18,13 +18,13 @@ use Brighten\ImmutableModel\Relations\ImmutableBelongsTo;
  */
 class ImmutableProfile extends ImmutableModel
 {
-    protected string $table = 'profiles';
+    protected $table = 'profiles';
 
-    protected ?string $primaryKey = 'id';
+    protected $primaryKey = 'id';
 
-    protected string $keyType = 'int';
+    protected $keyType = 'int';
 
-    protected array $casts = [
+    protected $casts = [
         'user_id' => 'int',
         'birthday' => 'date',
     ];

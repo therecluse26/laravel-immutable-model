@@ -7,9 +7,13 @@ namespace Brighten\ImmutableModel\Tests\Models;
 use Brighten\ImmutableModel\ImmutableModel;
 use Brighten\ImmutableModel\Relations\ImmutableBelongsTo;
 use Brighten\ImmutableModel\Relations\ImmutableHasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * Immutable supplier model for testing HasManyThrough.
+ *
+ * Uses SoftDeletes trait so HasManyThrough automatically filters
+ * out soft-deleted intermediate models.
  *
  * @property int $id
  * @property int $country_id
@@ -20,13 +24,14 @@ use Brighten\ImmutableModel\Relations\ImmutableHasMany;
  */
 class ImmutableSupplier extends ImmutableModel
 {
-    protected string $table = 'suppliers';
+    use SoftDeletes;
+    protected $table = 'suppliers';
 
-    protected ?string $primaryKey = 'id';
+    protected $primaryKey = 'id';
 
-    protected string $keyType = 'int';
+    protected $keyType = 'int';
 
-    protected array $casts = [
+    protected $casts = [
         'country_id' => 'int',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',

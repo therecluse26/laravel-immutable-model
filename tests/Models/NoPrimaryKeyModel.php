@@ -11,7 +11,7 @@ use Brighten\ImmutableModel\ImmutableModel;
  */
 class NoPrimaryKeyModel extends ImmutableModel
 {
-    protected string $table = 'users';
+    protected $table = 'users';
 
-    protected ?string $primaryKey = null;
+    protected $primaryKey = null;
 }

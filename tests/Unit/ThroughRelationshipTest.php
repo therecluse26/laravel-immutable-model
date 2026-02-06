@@ -136,7 +136,8 @@ class ThroughRelationshipTest extends TestCase
 
     public function test_has_one_through_blocks_save(): void
     {
-        $this->expectException(ImmutableModelViolationException::class);
+        // Laravel's HasOneThrough doesn't have a save() method, so it throws BadMethodCallException
+        $this->expectException(\BadMethodCallException::class);
 
         $user = new ImmutableUser();
         $this->country->firstUser()->save($user);

@@ -11,9 +11,9 @@ use Brighten\ImmutableModel\ImmutableModel;
  */
 class MethodCastModel extends ImmutableModel
 {
-    protected string $table = 'users';
+    protected $table = 'users';
 
-    protected ?string $primaryKey = 'id';
+    protected $primaryKey = 'id';
 
     /**
      * Laravel 11 style: define casts via method instead of property.

@@ -24,13 +24,13 @@ use Brighten\ImmutableModel\Relations\ImmutableHasMany;
  */
 class ImmutableCategory extends ImmutableModel
 {
-    protected string $table = 'immutable_categories';
+    protected $table = 'immutable_categories';
 
-    protected ?string $primaryKey = 'id';
+    protected $primaryKey = 'id';
 
-    protected string $keyType = 'int';
+    protected $keyType = 'int';
 
-    protected array $casts = [
+    protected $casts = [
         'parent_id' => 'int',
         'depth' => 'int',
         'created_at' => 'datetime',

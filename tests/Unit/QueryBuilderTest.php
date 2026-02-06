@@ -6,7 +6,7 @@ namespace Brighten\ImmutableModel\Tests\Unit;
 
 use Brighten\ImmutableModel\Exceptions\ImmutableModelConfigurationException;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
-use Brighten\ImmutableModel\ImmutableQueryBuilder;
+use Brighten\ImmutableModel\ImmutableEloquentBuilder;
 use Brighten\ImmutableModel\Tests\Models\ImmutableUser;
 use Brighten\ImmutableModel\Tests\Models\NoPrimaryKeyModel;
 use Brighten\ImmutableModel\Tests\TestCase;
@@ -62,7 +62,7 @@ class QueryBuilderTest extends TestCase
     {
         $builder = ImmutableUser::query();
 
-        $this->assertInstanceOf(ImmutableQueryBuilder::class, $builder);
+        $this->assertInstanceOf(ImmutableEloquentBuilder::class, $builder);
     }
 
     public function test_get_returns_immutable_collection(): void
@@ -529,12 +529,13 @@ class QueryBuilderTest extends TestCase
     // MODEL WITHOUT PRIMARY KEY
     // =========================================================================
 
-    public function test_find_throws_without_primary_key(): void
+    public function test_find_without_primary_key_throws_query_exception(): void
     {
+        // Models without primary key will cause a query exception when trying to find
+        // because the SQL query will be malformed
         NoPrimaryKeyModel::setConnectionResolver($this->app['db']);
 
-        $this->expectException(ImmutableModelConfigurationException::class);
-        $this->expectExceptionMessage('Cannot perform [find]');
+        $this->expectException(\Illuminate\Database\QueryException::class);
 
         NoPrimaryKeyModel::find(1);
     }

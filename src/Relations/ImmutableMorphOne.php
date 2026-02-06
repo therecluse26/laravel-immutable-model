@@ -5,270 +5,86 @@ declare(strict_types=1);
 namespace Brighten\ImmutableModel\Relations;
 
 use Brighten\ImmutableModel\Exceptions\ImmutableModelViolationException;
-use Brighten\ImmutableModel\ImmutableModel;
-use Illuminate\Database\Eloquent\Collection as EloquentCollection;
-use Brighten\ImmutableModel\ImmutableQueryBuilder;
-use Closure;
-use Illuminate\Database\Eloquent\Model as EloquentModel;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\MorphOne;
 
 /**
- * Represents a polymorphic one-to-one relationship for immutable models.
+ * Immutable MorphOne relationship.
  *
- * Example: A Post morphOne Image (where Image is polymorphic via imageable_type/imageable_id)
- *
- * @method $this|ImmutableQueryBuilder with(string|array $relations, string|\Closure|null $callback = null)
- * @method $this|ImmutableQueryBuilder withCount(string|array $relations)
- * @method $this|ImmutableQueryBuilder where(string|\Closure $column, mixed $operator = null, mixed $value = null)
- * @method $this|ImmutableQueryBuilder whereIn(string $column, array $values)
- * @method $this|ImmutableQueryBuilder whereNull(string $column)
- * @method $this|ImmutableQueryBuilder whereNotNull(string $column)
- * @method $this|ImmutableQueryBuilder orderBy(string $column, string $direction = 'asc')
- * @method $this|ImmutableQueryBuilder orderByDesc(string $column)
- * @method $this|ImmutableQueryBuilder limit(int $value)
- * @method $this|ImmutableQueryBuilder offset(int $value)
- * @method $this|ImmutableQueryBuilder select(array|string $columns)
- * @method EloquentCollection|\Illuminate\Support\Collection get(array $columns = ['*'])
- * @method TRelatedModel|null first(array $columns = ['*'])
- * @method int count(string $columns = '*')
- * @method bool exists()
- *
- * @template TRelatedModel of ImmutableModel|EloquentModel
+ * Extends Eloquent's MorphOne for full read compatibility while
+ * blocking all mutation operations.
  */
-class ImmutableMorphOne
+class ImmutableMorphOne extends MorphOne
 {
     /**
-     * The parent immutable model.
+     * @throws ImmutableModelViolationException
      */
-    private ImmutableModel $parent;
-
-    /**
-     * The related model class name.
-     *
-     * @var class-string<TRelatedModel>
-     */
-    private string $related;
-
-    /**
-     * The morph type column name.
-     */
-    private string $morphType;
-
-    /**
-     * The foreign key column name (morph ID).
-     */
-    private string $foreignKey;
-
-    /**
-     * The local key on the parent model.
-     */
-    private string $localKey;
-
-    /**
-     * The parent's morph class name.
-     */
-    private string $morphClass;
-
-    /**
-     * The relation name.
-     */
-    private string $relationName;
-
-    /**
-     * Create a new morph-one relationship instance.
-     *
-     * @param  ImmutableModel  $parent
-     * @param  class-string<TRelatedModel>  $related
-     */
-    public function __construct(
-        ImmutableModel $parent,
-        string $related,
-        string $morphType,
-        string $foreignKey,
-        string $localKey,
-        string $relationName
-    ) {
-        $this->parent = $parent;
-        $this->related = $related;
-        $this->morphType = $morphType;
-        $this->foreignKey = $foreignKey;
-        $this->localKey = $localKey;
-        $this->morphClass = $parent->getMorphClass();
-        $this->relationName = $relationName;
-    }
-
-    /**
-     * Get the related model.
-     *
-     * @return TRelatedModel|null
-     */
-    public function getResults(): mixed
+    public function save(Model $model): never
     {
-        $localKeyValue = $this->parent->getRawAttribute($this->localKey);
-
-        if ($localKeyValue === null) {
-            return null;
-        }
-
-        return $this->getConstrainedQuery()->first();
+        throw ImmutableModelViolationException::relationMutation('save');
     }
 
     /**
-     * Check if the related model is an ImmutableModel.
+     * @throws ImmutableModelViolationException
      */
-    private function isImmutableRelated(): bool
+    public function saveQuietly(Model $model): never
     {
-        return is_subclass_of($this->related, ImmutableModel::class);
+        throw ImmutableModelViolationException::relationMutation('saveQuietly');
     }
 
     /**
-     * Get a new query builder for the related model.
-     *
-     * @return ImmutableQueryBuilder|\Illuminate\Database\Eloquent\Builder
+     * @throws ImmutableModelViolationException
      */
-    public function getQuery(): mixed
+    public function create(array $attributes = []): never
     {
-        $related = $this->related;
-
-        return $related::query();
+        throw ImmutableModelViolationException::relationMutation('create');
     }
 
     /**
-     * Get a constrained query builder with morph type and foreign key constraints.
-     *
-     * @return ImmutableQueryBuilder|\Illuminate\Database\Eloquent\Builder
+     * @throws ImmutableModelViolationException
      */
-    public function getConstrainedQuery(): mixed
+    public function createQuietly(array $attributes = []): never
     {
-        $localKeyValue = $this->parent->getRawAttribute($this->localKey);
-
-        return $this->getQuery()
-            ->where($this->morphType, '=', $this->morphClass)
-            ->where($this->foreignKey, '=', $localKeyValue);
+        throw ImmutableModelViolationException::relationMutation('createQuietly');
     }
 
     /**
-     * Eager load the relation on a collection of models.
+     * @throws ImmutableModelViolationException
      */
-    public function eagerLoadOnCollection(
-        EloquentCollection $models,
-        string $name,
-        ?Closure $constraints = null
-    ): void {
-        // Collect all local key values
-        $keys = [];
-        foreach ($models as $model) {
-            $key = $model->getRawAttribute($this->localKey);
-            if ($key !== null) {
-                $keys[] = $key;
-            }
-        }
-
-        $keys = array_unique($keys);
-
-        if (empty($keys)) {
-            // Set null for all models
-            foreach ($models as $model) {
-                $model->setRelationInternal($name, null);
-            }
-
-            return;
-        }
-
-        // Build query with morph type constraint
-        $query = $this->getQuery()
-            ->where($this->morphType, '=', $this->morphClass)
-            ->whereIn($this->foreignKey, $keys);
-
-        // Apply constraints if provided
-        if ($constraints !== null) {
-            $constraints($query);
-        }
-
-        // Fetch related models
-        $results = $query->get();
-
-        // Build dictionary keyed by foreign key (only keep first match for MorphOne)
-        $dictionary = [];
-        foreach ($results as $relatedModel) {
-            $foreignKeyValue = $this->getRelatedForeignKey($relatedModel);
-            if (! isset($dictionary[$foreignKeyValue])) {
-                $dictionary[$foreignKeyValue] = $relatedModel;
-            }
-        }
-
-        // Match to parent models
-        foreach ($models as $model) {
-            $localKey = $model->getRawAttribute($this->localKey);
-            $model->setRelationInternal($name, $dictionary[$localKey] ?? null);
-        }
-    }
-
-    /**
-     * Get the foreign key value from a related model.
-     */
-    private function getRelatedForeignKey(mixed $model): mixed
+    public function forceCreate(array $attributes = []): never
     {
-        if ($model instanceof ImmutableModel) {
-            return $model->getRawAttribute($this->foreignKey);
-        }
-
-        return $model->{$this->foreignKey};
+        throw ImmutableModelViolationException::relationMutation('forceCreate');
     }
 
     /**
-     * Forward calls to the query builder.
-     *
-     * @return mixed
+     * @throws ImmutableModelViolationException
      */
-    public function __call(string $method, array $parameters): mixed
+    public function forceCreateQuietly(array $attributes = []): never
     {
-        // Block mutation methods
-        $blocked = ['create', 'save', 'update', 'delete', 'insert', 'make', 'forceCreate'];
-
-        if (in_array($method, $blocked, true)) {
-            throw ImmutableModelViolationException::persistenceAttempt($method);
-        }
-
-        return $this->getConstrainedQuery()->{$method}(...$parameters);
+        throw ImmutableModelViolationException::relationMutation('forceCreateQuietly');
     }
 
     /**
-     * Get the morph type column name.
+     * @throws ImmutableModelViolationException
      */
-    public function getMorphType(): string
+    public function update(array $attributes = []): never
     {
-        return $this->morphType;
+        throw ImmutableModelViolationException::relationMutation('update');
     }
 
     /**
-     * Get the morph class name.
+     * @throws ImmutableModelViolationException
      */
-    public function getMorphClass(): string
+    public function updateOrCreate(array $attributes, array $values = []): never
     {
-        return $this->morphClass;
+        throw ImmutableModelViolationException::relationMutation('updateOrCreate');
     }
 
     /**
-     * Get the foreign key column name.
+     * @throws ImmutableModelViolationException
      */
-    public function getForeignKeyName(): string
+    public function createOrFirst(array $attributes = [], array $values = []): never
     {
-        return $this->foreignKey;
-    }
-
-    /**
-     * Get the local key column name.
-     */
-    public function getLocalKeyName(): string
-    {
-        return $this->localKey;
-    }
-
-    /**
-     * Get the related model's table name.
-     */
-    public function getRelatedTable(): string
-    {
-        return (new $this->related())->getTable();
+        throw ImmutableModelViolationException::relationMutation('createOrFirst');
     }
 }

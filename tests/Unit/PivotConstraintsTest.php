@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Brighten\ImmutableModel\Tests\Unit;
 
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Brighten\ImmutableModel\Relations\ImmutableMorphPivot;
 use Brighten\ImmutableModel\Relations\ImmutablePivot;
 use Brighten\ImmutableModel\Tests\Models\ImmutablePost;
 use Brighten\ImmutableModel\Tests\Models\ImmutableTag;
@@ -174,7 +175,8 @@ class PivotConstraintsTest extends TestCase
         $this->assertCount(2, $tags);
         $firstTag = $tags->first();
 
-        $this->assertInstanceOf(ImmutablePivot::class, $firstTag->pivot);
+        // MorphToMany uses ImmutableMorphPivot (extends MorphPivot) for the morph type column
+        $this->assertInstanceOf(ImmutableMorphPivot::class, $firstTag->pivot);
     }
 
     public function test_morph_to_many_pivot_has_morph_type(): void
@@ -194,7 +196,8 @@ class PivotConstraintsTest extends TestCase
         $this->assertCount(1, $posts);
         $firstPost = $posts->first();
 
-        $this->assertInstanceOf(ImmutablePivot::class, $firstPost->pivot);
+        // MorphToMany uses ImmutableMorphPivot (extends MorphPivot) for the morph type column
+        $this->assertInstanceOf(ImmutableMorphPivot::class, $firstPost->pivot);
         $this->assertEquals(ImmutablePost::class, $firstPost->pivot->taggable_type);
     }
 

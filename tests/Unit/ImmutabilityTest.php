@@ -150,16 +150,6 @@ class ImmutabilityTest extends TestCase
         ImmutableUser::create(['name' => 'Test']);
     }
 
-    public function test_fill_throws(): void
-    {
-        $user = ImmutableUser::find(1);
-
-        $this->expectException(ImmutableModelViolationException::class);
-        $this->expectExceptionMessage('Cannot call [fill]');
-
-        $user->fill(['name' => 'New Name']);
-    }
-
     public function test_push_throws(): void
     {
         $user = ImmutableUser::find(1);

@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Brighten\ImmutableModel\Tests\Unit;
 
-use Brighten\ImmutableModel\ImmutableQueryBuilder;
-use Brighten\ImmutableModel\Scopes\ImmutableModelScope;
+use Brighten\ImmutableModel\ImmutableEloquentBuilder;
 use Brighten\ImmutableModel\Tests\Models\ScopedModel;
 use Brighten\ImmutableModel\Tests\TestCase;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Scope;
 
 class GlobalScopeTest extends TestCase
 {
@@ -16,7 +18,8 @@ class GlobalScopeTest extends TestCase
         parent::setUp();
         $this->seedTestData();
         ScopedModel::setConnectionResolver($this->app['db']);
-        ScopedModel::$globalScopes = [];
+        // Clear any previously registered global scopes
+        ScopedModel::clearBootedModels();
     }
 
     protected function seedTestData(): void
@@ -30,7 +33,7 @@ class GlobalScopeTest extends TestCase
 
     public function test_global_scope_is_applied(): void
     {
-        ScopedModel::$globalScopes = [VerifiedUserScope::class];
+        ScopedModel::addGlobalScope(new VerifiedUserScope());
 
         $users = ScopedModel::query()->get();
 
@@ -40,10 +43,8 @@ class GlobalScopeTest extends TestCase
 
     public function test_multiple_global_scopes_are_applied(): void
     {
-        ScopedModel::$globalScopes = [
-            VerifiedUserScope::class,
-            RecentUserScope::class,
-        ];
+        ScopedModel::addGlobalScope(new VerifiedUserScope());
+        ScopedModel::addGlobalScope(new RecentUserScope());
 
         $users = ScopedModel::query()->get();
 
@@ -54,7 +55,7 @@ class GlobalScopeTest extends TestCase
 
     public function test_without_global_scopes_removes_all(): void
     {
-        ScopedModel::$globalScopes = [VerifiedUserScope::class];
+        ScopedModel::addGlobalScope(new VerifiedUserScope());
 
         $users = ScopedModel::withoutGlobalScopes()->get();
 
@@ -64,13 +65,11 @@ class GlobalScopeTest extends TestCase
 
     public function test_without_global_scope_removes_specific(): void
     {
-        ScopedModel::$globalScopes = [
-            VerifiedUserScope::class,
-            RecentUserScope::class,
-        ];
+        ScopedModel::addGlobalScope('verified', new VerifiedUserScope());
+        ScopedModel::addGlobalScope('recent', new RecentUserScope());
 
         // Remove only the verified scope
-        $users = ScopedModel::withoutGlobalScope(VerifiedUserScope::class)->get();
+        $users = ScopedModel::withoutGlobalScope('verified')->get();
 
         // Bob and Charlie are recent (created Jan 2 or later)
         $this->assertCount(2, $users);
@@ -78,24 +77,24 @@ class GlobalScopeTest extends TestCase
 
     public function test_get_global_scopes_returns_registered_scopes(): void
     {
-        ScopedModel::$globalScopes = [
-            VerifiedUserScope::class,
-            RecentUserScope::class,
-        ];
+        ScopedModel::addGlobalScope('verified', new VerifiedUserScope());
+        ScopedModel::addGlobalScope('recent', new RecentUserScope());
 
-        $scopes = ScopedModel::getGlobalScopes();
+        // getGlobalScopes() is an instance method in Eloquent
+        $model = new ScopedModel();
+        $scopes = $model->getGlobalScopes();
 
-        $this->assertContains(VerifiedUserScope::class, $scopes);
-        $this->assertContains(RecentUserScope::class, $scopes);
+        $this->assertArrayHasKey('verified', $scopes);
+        $this->assertArrayHasKey('recent', $scopes);
     }
 }
 
 /**
  * Test scope that filters to verified users only.
  */
-class VerifiedUserScope implements ImmutableModelScope
+class VerifiedUserScope implements Scope
 {
-    public function apply(ImmutableQueryBuilder $builder): void
+    public function apply(Builder $builder, Model $model): void
     {
         $builder->whereNotNull('email_verified_at');
     }
@@ -104,9 +103,9 @@ class VerifiedUserScope implements ImmutableModelScope
 /**
  * Test scope that filters to recently created users.
  */
-class RecentUserScope implements ImmutableModelScope
+class RecentUserScope implements Scope
 {
-    public function apply(ImmutableQueryBuilder $builder): void
+    public function apply(Builder $builder, Model $model): void
     {
         $builder->where('created_at', '>=', '2024-01-02 00:00:00');
     }
