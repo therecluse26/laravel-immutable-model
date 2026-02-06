@@ -21,13 +21,13 @@ use Brighten\ImmutableModel\Relations\ImmutableBelongsTo;
  */
 class ImmutableComment extends ImmutableModel
 {
-    protected string $table = 'comments';
+    protected $table = 'comments';
 
-    protected ?string $primaryKey = 'id';
+    protected $primaryKey = 'id';
 
-    protected string $keyType = 'int';
+    protected $keyType = 'int';
 
-    protected array $casts = [
+    protected $casts = [
         'post_id' => 'int',
         'user_id' => 'int',
         'created_at' => 'datetime',

@@ -19,15 +19,15 @@ use Brighten\ImmutableModel\ImmutableModel;
  */
 class ImmutableProduct extends ImmutableModel
 {
-    protected string $table = 'products';
+    protected $table = 'products';
 
-    protected ?string $primaryKey = 'uuid';
+    protected $primaryKey = 'uuid';
 
-    protected string $keyType = 'string';
+    protected $keyType = 'string';
 
-    protected bool $incrementing = false;
+    public $incrementing = false;
 
-    protected array $casts = [
+    protected $casts = [
         'price' => 'float',
         'metadata' => 'array',
         'created_at' => 'datetime',

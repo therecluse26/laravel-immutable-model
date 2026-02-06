@@ -6,6 +6,7 @@ namespace Brighten\ImmutableModel\Tests\Unit;
 
 use Brighten\ImmutableModel\Exceptions\ImmutableModelViolationException;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Brighten\ImmutableModel\Relations\ImmutableMorphPivot;
 use Brighten\ImmutableModel\Relations\ImmutablePivot;
 use Brighten\ImmutableModel\Tests\Models\ImmutablePost;
 use Brighten\ImmutableModel\Tests\Models\ImmutableTag;
@@ -128,7 +129,8 @@ class MorphToManyRelationshipTest extends TestCase
         $tags = $this->post->morphTags;
         $firstTag = $tags->first();
 
-        $this->assertInstanceOf(ImmutablePivot::class, $firstTag->pivot);
+        // MorphToMany uses ImmutableMorphPivot (extends MorphPivot) for the morph type column
+        $this->assertInstanceOf(ImmutableMorphPivot::class, $firstTag->pivot);
         $this->assertNotNull($firstTag->pivot->created_at);
     }
 
@@ -210,7 +212,8 @@ class MorphToManyRelationshipTest extends TestCase
         $posts = $this->tag1->taggablePosts;
         $firstPost = $posts->first();
 
-        $this->assertInstanceOf(ImmutablePivot::class, $firstPost->pivot);
+        // MorphToMany uses ImmutableMorphPivot (extends MorphPivot) for the morph type column
+        $this->assertInstanceOf(ImmutableMorphPivot::class, $firstPost->pivot);
         $this->assertNotNull($firstPost->pivot->created_at);
     }
 

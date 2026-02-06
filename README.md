@@ -259,15 +259,16 @@ foreach (MyModel::cursor() as $model) {
 
 ### Global Scopes
 
-Apply query constraints automatically:
+Apply query constraints automatically using Laravel's native `Scope` interface:
 
 ```php
-use Brighten\ImmutableModel\Scopes\ImmutableModelScope;
-use Brighten\ImmutableModel\ImmutableQueryBuilder;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Scope;
 
-class TenantScope implements ImmutableModelScope
+class TenantScope implements Scope
 {
-    public function apply(ImmutableQueryBuilder $builder): void
+    public function apply(Builder $builder, Model $model): void
     {
         $builder->where('tenant_id', auth()->user()->tenant_id);
     }
@@ -275,9 +276,10 @@ class TenantScope implements ImmutableModelScope
 
 class TenantModel extends ImmutableModel
 {
-    protected static array $globalScopes = [
-        TenantScope::class,
-    ];
+    protected static function booted(): void
+    {
+        static::addGlobalScope(new TenantScope);
+    }
 }
 
 // Bypass scopes when needed

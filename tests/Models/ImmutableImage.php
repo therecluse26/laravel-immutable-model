@@ -20,13 +20,13 @@ use Brighten\ImmutableModel\Relations\ImmutableMorphTo;
  */
 class ImmutableImage extends ImmutableModel
 {
-    protected string $table = 'images';
+    protected $table = 'images';
 
-    protected ?string $primaryKey = 'id';
+    protected $primaryKey = 'id';
 
-    protected string $keyType = 'int';
+    protected $keyType = 'int';
 
-    protected array $casts = [
+    protected $casts = [
         'is_featured' => 'bool',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',

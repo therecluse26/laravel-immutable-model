@@ -241,8 +241,8 @@ class CastingTest extends TestCase
     public function test_cast_to_object_from_array(): void
     {
         TestCastableModel::$testCasts = ['value' => 'object'];
-        // When the value is already an array (e.g., from a JSON column that was pre-decoded)
-        $model = TestCastableModel::fromRow(['value' => ['name' => 'John', 'age' => 30]]);
+        // The object cast expects a JSON string (Eloquent's native behavior)
+        $model = TestCastableModel::fromRow(['value' => json_encode(['name' => 'John', 'age' => 30])]);
 
         $this->assertInstanceOf(\stdClass::class, $model->value);
         $this->assertEquals('John', $model->value->name);
@@ -312,8 +312,8 @@ class CastingTest extends TestCase
         TestCastableModel::$testCasts = ['value' => 'NonExistentCasterClass'];
         $model = TestCastableModel::fromRow(['value' => 'test']);
 
-        $this->expectException(ImmutableModelConfigurationException::class);
-        $this->expectExceptionMessage('Cast class [NonExistentCasterClass] does not exist');
+        // Eloquent's native casting throws InvalidCastException for unknown cast classes
+        $this->expectException(\Illuminate\Database\Eloquent\InvalidCastException::class);
 
         $model->value;
     }

@@ -11,9 +11,9 @@ use Brighten\ImmutableModel\ImmutableModel;
  */
 class TestCastableModel extends ImmutableModel
 {
-    protected string $table = 'test';
+    protected $table = 'test';
 
-    protected ?string $primaryKey = 'id';
+    protected $primaryKey = 'id';
 
     /**
      * Static casts configuration for testing.

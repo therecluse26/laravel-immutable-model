@@ -18,14 +18,14 @@ use Brighten\ImmutableModel\ImmutableModel;
  */
 class ImmutableUserPostCount extends ImmutableModel
 {
-    protected string $table = 'user_post_counts';
+    protected $table = 'user_post_counts';
 
     /**
      * View-backed models typically don't have a primary key.
      */
-    protected ?string $primaryKey = null;
+    protected $primaryKey = null;
 
-    protected array $casts = [
+    protected $casts = [
         'user_id' => 'int',
         'post_count' => 'int',
     ];

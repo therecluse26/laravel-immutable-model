@@ -376,11 +376,11 @@ class BenchmarkEloquentPost extends EloquentModel
  */
 class BenchmarkImmutableUser extends ImmutableModel
 {
-    protected string $table = 'users';
+    protected $table = 'users';
 
-    protected ?string $primaryKey = 'id';
+    protected $primaryKey = 'id';
 
-    protected array $casts = [
+    protected $casts = [
         'settings' => 'array',
         'email_verified_at' => 'datetime',
     ];
@@ -393,11 +393,11 @@ class BenchmarkImmutableUser extends ImmutableModel
 
 class BenchmarkImmutablePost extends ImmutableModel
 {
-    protected string $table = 'posts';
+    protected $table = 'posts';
 
-    protected ?string $primaryKey = 'id';
+    protected $primaryKey = 'id';
 
-    protected array $casts = [
+    protected $casts = [
         'user_id' => 'int',
         'published' => 'bool',
     ];

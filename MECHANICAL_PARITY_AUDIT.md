@@ -1,5 +1,18 @@
 # Mechanical Parity Audit Plan
 
+> **⚠️ HISTORICAL DOCUMENT**
+>
+> This document was written for the original standalone implementation that did NOT extend Eloquent.
+> The package has since been refactored to extend `Eloquent\Model` directly, which provides automatic
+> read parity via inheritance. References to `ImmutableQueryBuilder`, `CastManager`, and
+> `ImmutableModelScope` are obsolete - these classes no longer exist.
+>
+> The current architecture uses:
+> - `ImmutableModel` extends `Eloquent\Model`
+> - `ImmutableEloquentBuilder` extends `Eloquent\Builder`
+> - Laravel's native `Scope` interface
+> - Eloquent's native casting system
+
 ## Purpose
 
 This document defines a comprehensive audit plan to achieve **perfect mechanical parity** between ImmutableModel and Laravel Eloquent for all read operations.

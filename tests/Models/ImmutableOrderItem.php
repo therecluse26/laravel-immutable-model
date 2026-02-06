@@ -24,13 +24,13 @@ use Brighten\ImmutableModel\Relations\ImmutableBelongsTo;
  */
 class ImmutableOrderItem extends ImmutableModel
 {
-    protected string $table = 'order_items';
+    protected $table = 'order_items';
 
-    protected ?string $primaryKey = 'id';
+    protected $primaryKey = 'id';
 
-    protected string $keyType = 'int';
+    protected $keyType = 'int';
 
-    protected array $casts = [
+    protected $casts = [
         'order_id' => 'int',
         'quantity' => 'int',
         'price' => 'float',

@@ -19,13 +19,13 @@ use Brighten\ImmutableModel\ImmutableModel;
  */
 class ImmutableArticle extends ImmutableModel
 {
-    protected string $table = 'articles';
+    protected $table = 'articles';
 
-    protected ?string $primaryKey = 'id';
+    protected $primaryKey = 'id';
 
-    protected string $keyType = 'int';
+    protected $keyType = 'int';
 
-    protected array $casts = [
+    protected $casts = [
         'published_at' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',

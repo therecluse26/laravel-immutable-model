@@ -240,7 +240,8 @@ class RelationQueryBuilderTest extends TestCase
 
     public function test_has_many_through_pluck(): void
     {
-        $names = $this->country->users()->pluck('name');
+        // Use qualified column name to avoid ambiguity between users.name and suppliers.name
+        $names = $this->country->users()->pluck('users.name');
 
         $this->assertCount(3, $names);
     }

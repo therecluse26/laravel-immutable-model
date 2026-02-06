@@ -219,7 +219,8 @@ class RelationMutationBlockingTest extends TestCase
     {
         $user = new ImmutableUser();
 
-        $this->expectException(ImmutableModelViolationException::class);
+        // Laravel's HasManyThrough doesn't have a save() method, so it throws BadMethodCallException
+        $this->expectException(\BadMethodCallException::class);
         $this->country->users()->save($user);
     }
 

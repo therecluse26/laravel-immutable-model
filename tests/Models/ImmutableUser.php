@@ -6,7 +6,7 @@ namespace Brighten\ImmutableModel\Tests\Models;
 
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Brighten\ImmutableModel\ImmutableModel;
-use Brighten\ImmutableModel\ImmutableQueryBuilder;
+use Brighten\ImmutableModel\ImmutableEloquentBuilder;
 use Brighten\ImmutableModel\Relations\ImmutableBelongsTo;
 use Brighten\ImmutableModel\Relations\ImmutableHasMany;
 use Brighten\ImmutableModel\Relations\ImmutableHasOne;
@@ -29,13 +29,13 @@ use Brighten\ImmutableModel\Tests\Models\Mutable\UserSettings;
  */
 class ImmutableUser extends ImmutableModel
 {
-    protected string $table = 'users';
+    protected $table = 'users';
 
-    protected ?string $primaryKey = 'id';
+    protected $primaryKey = 'id';
 
-    protected string $keyType = 'int';
+    protected $keyType = 'int';
 
-    protected array $casts = [
+    protected $casts = [
         'settings' => 'array',
         'email_verified_at' => 'datetime',
         'supplier_id' => 'int',
@@ -43,9 +43,9 @@ class ImmutableUser extends ImmutableModel
         'updated_at' => 'datetime',
     ];
 
-    protected array $hidden = [];
+    protected $hidden = [];
 
-    protected array $appends = ['display_name'];
+    protected $appends = ['display_name'];
 
     /**
      * Get the full display name accessor.
@@ -112,7 +112,7 @@ class ImmutableUser extends ImmutableModel
     /**
      * Scope to filter verified users (email_verified_at is not null).
      */
-    public function scopeVerified(ImmutableQueryBuilder $query): ImmutableQueryBuilder
+    public function scopeVerified(ImmutableEloquentBuilder $query): ImmutableEloquentBuilder
     {
         return $query->whereNotNull('email_verified_at');
     }
@@ -120,7 +120,7 @@ class ImmutableUser extends ImmutableModel
     /**
      * Scope to filter by name pattern.
      */
-    public function scopeNameLike(ImmutableQueryBuilder $query, string $pattern): ImmutableQueryBuilder
+    public function scopeNameLike(ImmutableEloquentBuilder $query, string $pattern): ImmutableEloquentBuilder
     {
         return $query->where('name', 'like', $pattern);
     }
@@ -128,7 +128,7 @@ class ImmutableUser extends ImmutableModel
     /**
      * Scope to order by name.
      */
-    public function scopeOrderByName(ImmutableQueryBuilder $query, string $direction = 'asc'): ImmutableQueryBuilder
+    public function scopeOrderByName(ImmutableEloquentBuilder $query, string $direction = 'asc'): ImmutableEloquentBuilder
     {
         return $query->orderBy('name', $direction);
     }

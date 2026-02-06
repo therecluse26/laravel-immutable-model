@@ -34,13 +34,13 @@ use Illuminate\Support\Collection;
  */
 class ImmutablePost extends ImmutableModel
 {
-    protected string $table = 'posts';
+    protected $table = 'posts';
 
-    protected ?string $primaryKey = 'id';
+    protected $primaryKey = 'id';
 
-    protected string $keyType = 'int';
+    protected $keyType = 'int';
 
-    protected array $casts = [
+    protected $casts = [
         'user_id' => 'int',
         'category_id' => 'int',
         'published' => 'bool',
@@ -95,7 +95,8 @@ class ImmutablePost extends ImmutableModel
      */
     public function morphTags(): ImmutableMorphToMany
     {
-        return $this->morphToMany(ImmutableTag::class, 'taggable')
+        // Explicitly specify 'tag_id' since Eloquent would derive 'immutable_tag_id' from class name
+        return $this->morphToMany(ImmutableTag::class, 'taggable', 'taggables', null, 'tag_id')
             ->withTimestamps();
     }
 

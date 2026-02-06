@@ -5,239 +5,86 @@ declare(strict_types=1);
 namespace Brighten\ImmutableModel\Relations;
 
 use Brighten\ImmutableModel\Exceptions\ImmutableModelViolationException;
-use Brighten\ImmutableModel\ImmutableModel;
-use Illuminate\Database\Eloquent\Collection as EloquentCollection;
-use Brighten\ImmutableModel\ImmutableQueryBuilder;
-use Closure;
-use Illuminate\Database\Eloquent\Model as EloquentModel;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
- * Represents a has-one relationship for immutable models.
+ * Immutable HasOne relationship.
  *
- * @method $this|ImmutableQueryBuilder with(string|array $relations, string|\Closure|null $callback = null)
- * @method $this|ImmutableQueryBuilder withCount(string|array $relations)
- * @method $this|ImmutableQueryBuilder where(string|\Closure $column, mixed $operator = null, mixed $value = null)
- * @method $this|ImmutableQueryBuilder whereIn(string $column, array $values)
- * @method $this|ImmutableQueryBuilder whereNull(string $column)
- * @method $this|ImmutableQueryBuilder whereNotNull(string $column)
- * @method $this|ImmutableQueryBuilder orderBy(string $column, string $direction = 'asc')
- * @method $this|ImmutableQueryBuilder orderByDesc(string $column)
- * @method $this|ImmutableQueryBuilder limit(int $value)
- * @method $this|ImmutableQueryBuilder offset(int $value)
- * @method $this|ImmutableQueryBuilder select(array|string $columns)
- * @method EloquentCollection|\Illuminate\Support\Collection get(array $columns = ['*'])
- * @method TRelatedModel|null first(array $columns = ['*'])
- * @method int count(string $columns = '*')
- * @method bool exists()
- *
- * @template TRelatedModel of ImmutableModel|EloquentModel
+ * Extends Eloquent's HasOne for full read compatibility while
+ * blocking all mutation operations.
  */
-class ImmutableHasOne
+class ImmutableHasOne extends HasOne
 {
     /**
-     * The parent immutable model.
+     * @throws ImmutableModelViolationException
      */
-    private ImmutableModel $parent;
-
-    /**
-     * The related model class name.
-     *
-     * @var class-string<TRelatedModel>
-     */
-    private string $related;
-
-    /**
-     * The foreign key on the related model.
-     */
-    private string $foreignKey;
-
-    /**
-     * The local key on the parent model.
-     */
-    private string $localKey;
-
-    /**
-     * The relation name.
-     */
-    private string $relationName;
-
-    /**
-     * Create a new has-one relationship instance.
-     *
-     * @param ImmutableModel $parent
-     * @param class-string<TRelatedModel> $related
-     * @param string $foreignKey
-     * @param string $localKey
-     * @param string $relationName
-     */
-    public function __construct(
-        ImmutableModel $parent,
-        string $related,
-        string $foreignKey,
-        string $localKey,
-        string $relationName
-    ) {
-        $this->parent = $parent;
-        $this->related = $related;
-        $this->foreignKey = $foreignKey;
-        $this->localKey = $localKey;
-        $this->relationName = $relationName;
-    }
-
-    /**
-     * Get the related model instance.
-     *
-     * @return TRelatedModel|null
-     */
-    public function getResults(): mixed
+    public function save(Model $model): never
     {
-        $localKeyValue = $this->parent->getRawAttribute($this->localKey);
-
-        if ($localKeyValue === null) {
-            return null;
-        }
-
-        return $this->getQuery()
-            ->where($this->foreignKey, '=', $localKeyValue)
-            ->first();
+        throw ImmutableModelViolationException::relationMutation('save');
     }
 
     /**
-     * Get a new query builder for the related model.
-     *
-     * @return ImmutableQueryBuilder|\Illuminate\Database\Eloquent\Builder
+     * @throws ImmutableModelViolationException
      */
-    public function getQuery(): mixed
+    public function saveQuietly(Model $model): never
     {
-        $related = $this->related;
-
-        if (is_subclass_of($related, ImmutableModel::class)) {
-            return $related::query();
-        }
-
-        // Handle Eloquent models
-        return $related::query();
+        throw ImmutableModelViolationException::relationMutation('saveQuietly');
     }
 
     /**
-     * Eager load the relation on a collection of models.
+     * @throws ImmutableModelViolationException
      */
-    public function eagerLoadOnCollection(
-        EloquentCollection $models,
-        string $name,
-        ?Closure $constraints = null
-    ): void {
-        // Collect all local key values
-        $keys = [];
-        foreach ($models as $model) {
-            $key = $model->getRawAttribute($this->localKey);
-            if ($key !== null) {
-                $keys[] = $key;
-            }
-        }
-
-        $keys = array_unique($keys);
-
-        if (empty($keys)) {
-            // Set null for all models
-            foreach ($models as $model) {
-                $model->setRelationInternal($name, null);
-            }
-
-            return;
-        }
-
-        // Build query
-        $query = $this->getQuery()->whereIn($this->foreignKey, $keys);
-
-        // Apply constraints if provided
-        if ($constraints !== null) {
-            $constraints($query);
-        }
-
-        // Fetch related models
-        $related = $query->get();
-
-        // Build dictionary keyed by foreign key
-        $dictionary = [];
-        foreach ($related as $relatedModel) {
-            $key = $this->getRelatedForeignKey($relatedModel);
-            // For hasOne, only store the first match
-            if (! isset($dictionary[$key])) {
-                $dictionary[$key] = $relatedModel;
-            }
-        }
-
-        // Match to parent models
-        foreach ($models as $model) {
-            $localKey = $model->getRawAttribute($this->localKey);
-            $model->setRelationInternal($name, $dictionary[$localKey] ?? null);
-        }
-    }
-
-    /**
-     * Get the foreign key value from a related model.
-     */
-    private function getRelatedForeignKey(mixed $model): mixed
+    public function create(array $attributes = []): never
     {
-        if ($model instanceof ImmutableModel) {
-            return $model->getRawAttribute($this->foreignKey);
-        }
-
-        return $model->{$this->foreignKey};
+        throw ImmutableModelViolationException::relationMutation('create');
     }
 
     /**
-     * Get a constrained query builder for this relation.
-     *
-     * @return ImmutableQueryBuilder|\Illuminate\Database\Eloquent\Builder
+     * @throws ImmutableModelViolationException
      */
-    public function getConstrainedQuery(): mixed
+    public function createQuietly(array $attributes = []): never
     {
-        $localKeyValue = $this->parent->getRawAttribute($this->localKey);
-
-        return $this->getQuery()->where($this->foreignKey, '=', $localKeyValue);
+        throw ImmutableModelViolationException::relationMutation('createQuietly');
     }
 
     /**
-     * Forward calls to the query builder.
-     *
-     * @return mixed
+     * @throws ImmutableModelViolationException
      */
-    public function __call(string $method, array $parameters): mixed
+    public function forceCreate(array $attributes = []): never
     {
-        // Block mutation methods
-        $blocked = ['create', 'save', 'update', 'delete', 'insert', 'make'];
-        if (in_array($method, $blocked, true)) {
-            throw ImmutableModelViolationException::persistenceAttempt($method);
-        }
-
-        return $this->getConstrainedQuery()->{$method}(...$parameters);
+        throw ImmutableModelViolationException::relationMutation('forceCreate');
     }
 
     /**
-     * Get the related model's table name.
+     * @throws ImmutableModelViolationException
      */
-    public function getRelatedTable(): string
+    public function forceCreateQuietly(array $attributes = []): never
     {
-        $related = $this->related;
-
-        return (new $related())->getTable();
+        throw ImmutableModelViolationException::relationMutation('forceCreateQuietly');
     }
 
     /**
-     * Get the foreign key name.
+     * @throws ImmutableModelViolationException
      */
-    public function getForeignKeyName(): string
+    public function update(array $attributes = []): never
     {
-        return $this->foreignKey;
+        throw ImmutableModelViolationException::relationMutation('update');
     }
 
     /**
-     * Get the local key name.
+     * @throws ImmutableModelViolationException
      */
-    public function getLocalKeyName(): string
+    public function updateOrCreate(array $attributes, array $values = []): never
     {
-        return $this->localKey;
+        throw ImmutableModelViolationException::relationMutation('updateOrCreate');
+    }
+
+    /**
+     * @throws ImmutableModelViolationException
+     */
+    public function createOrFirst(array $attributes = [], array $values = []): never
+    {
+        throw ImmutableModelViolationException::relationMutation('createOrFirst');
     }
 }
