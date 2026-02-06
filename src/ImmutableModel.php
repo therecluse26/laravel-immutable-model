@@ -8,6 +8,7 @@ use Brighten\ImmutableModel\Exceptions\ImmutableModelViolationException;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use ReflectionClass;
 
 /**
  * Abstract base class for immutable, read-only models.
@@ -790,7 +791,36 @@ abstract class ImmutableModel extends Model
     // =========================================================================
 
     /**
+     * Cached ReflectionClass instances for fast hydration.
+     *
+     * @var array<class-string, ReflectionClass>
+     */
+    private static array $reflectionCache = [];
+
+    /**
+     * Cached merged casts arrays per class.
+     *
+     * This caches the result of merging $casts property with casts() method,
+     * avoiding the per-instance array_merge overhead.
+     *
+     * @var array<class-string, array>
+     */
+    private static array $castsCache = [];
+
+    /**
      * Create a new model instance from the database.
+     *
+     * This method bypasses most of Eloquent's constructor ceremony for maximum
+     * hydration performance. We use ReflectionClass::newInstanceWithoutConstructor()
+     * to avoid the overhead of syncOriginal(), fill(), and per-instance trait
+     * initialization that happen in the normal constructor path.
+     *
+     * Optimizations:
+     * - bootIfNotBooted(): Called but cached per class, not per instance
+     * - casts merging: Cached per class, avoiding array_merge per instance
+     * - syncOriginal(): Skipped - immutable models don't track dirty state
+     * - fill(): Skipped - we set attributes directly
+     * - initializeTraits(): Skipped - we cache the casts merge result
      *
      * @param array $attributes
      * @param string|null $connection
@@ -798,9 +828,37 @@ abstract class ImmutableModel extends Model
      */
     public function newFromBuilder($attributes = [], $connection = null)
     {
-        $model = parent::newFromBuilder($attributes, $connection);
+        $class = static::class;
+
+        // Get cached reflection or create and cache it
+        if (!isset(self::$reflectionCache[$class])) {
+            self::$reflectionCache[$class] = new ReflectionClass($class);
+        }
+
+        // Create instance without constructor (skip syncOriginal, fill overhead)
+        $model = self::$reflectionCache[$class]->newInstanceWithoutConstructor();
+
+        // Ensure the class is booted (cached per class, not per instance)
+        $model->bootIfNotBooted();
+
+        // Apply cached merged casts (instead of calling initializeTraits per instance)
+        if (!isset(self::$castsCache[$class])) {
+            // First time: merge casts property with casts() method and cache
+            self::$castsCache[$class] = $this->ensureCastsAreStringValues(
+                array_merge($this->casts, $this->casts())
+            );
+        }
+        $model->casts = self::$castsCache[$class];
+
+        // Direct attribute assignment - bypass setRawAttributes overhead
+        $model->attributes = (array) $attributes;
+
+        // Set required state
         $model->exists = true;
         $model->wasRecentlyCreated = false;
+
+        // Set connection - inherit from calling model if not explicitly provided
+        $model->setConnection($connection ?: $this->getConnectionName());
 
         return $model;
     }
@@ -808,8 +866,7 @@ abstract class ImmutableModel extends Model
     /**
      * Create a model instance from a raw database row.
      *
-     * This is a convenience method that wraps newFromBuilder for backwards
-     * compatibility with the original ImmutableModel API.
+     * This is a convenience method that uses the optimized hydration path.
      *
      * @param array|object $row
      * @return static
@@ -818,12 +875,9 @@ abstract class ImmutableModel extends Model
     {
         $attributes = $row instanceof \stdClass ? (array) $row : $row;
 
-        $model = new static();
-        $model->setRawAttributes($attributes, true);
-        $model->exists = true;
-        $model->wasRecentlyCreated = false;
-
-        return $model;
+        // Use the same optimized hydration path
+        $instance = new static();
+        return $instance->newFromBuilder($attributes);
     }
 
     /**
