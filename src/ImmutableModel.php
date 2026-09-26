@@ -616,29 +616,32 @@ abstract class ImmutableModel extends Model
     private static array $reflectionCache = [];
 
     /**
-     * Cached merged casts arrays per class.
+     * Trait initializers to run per hydrated instance, cached per class.
      *
-     * This caches the result of merging $casts property with casts() method,
-     * avoiding the per-instance array_merge overhead.
+     * This is Laravel's initializer list without initializeHasAttributes(),
+     * because newFromBuilder() copies the already-merged casts instead.
      *
-     * @var array<class-string, array>
+     * @var array<class-string, array<int, string>>
      */
-    private static array $castsCache = [];
+    private static array $initializerCache = [];
 
     /**
      * Create a new model instance from the database.
      *
-     * This method bypasses most of Eloquent's constructor ceremony for maximum
-     * hydration performance. We use ReflectionClass::newInstanceWithoutConstructor()
-     * to avoid the overhead of syncOriginal(), fill(), and per-instance trait
-     * initialization that happen in the normal constructor path.
+     * This method bypasses most of Eloquent's constructor ceremony for
+     * hydration performance. It uses ReflectionClass::newInstanceWithoutConstructor()
+     * and then sets the same state that Eloquent's newFromBuilder() sets.
      *
-     * Optimizations:
-     * - bootIfNotBooted(): Called but cached per class, not per instance
-     * - casts merging: Cached per class, avoiding array_merge per instance
-     * - syncOriginal(): Skipped - immutable models don't track dirty state
-     * - fill(): Skipped - we set attributes directly
-     * - initializeTraits(): Skipped - we cache the casts merge result
+     * Kept from Eloquent:
+     * - Trait initializers (initializeXxx()) run once per instance
+     * - Casts, table and connection are copied from the query's model, so
+     *   withCasts() and setTable() behave as in Eloquent
+     *
+     * Skipped:
+     * - initializeHasAttributes(): its result is already in $this->casts
+     * - syncOriginal(): immutable models don't track dirty state
+     * - fill(): attributes are set directly
+     * - the "retrieved" event: events are disabled
      *
      * @param array $attributes
      * @param string|null $connection
@@ -659,14 +662,21 @@ abstract class ImmutableModel extends Model
         // Ensure the class is booted (cached per class, not per instance)
         $model->bootIfNotBooted();
 
-        // Apply cached merged casts (instead of calling initializeTraits per instance)
-        if (!isset(self::$castsCache[$class])) {
-            // First time: merge casts property with casts() method and cache
-            self::$castsCache[$class] = $this->ensureCastsAreStringValues(
-                array_merge($this->casts, $this->casts())
-            );
+        // Run trait initializers, as the constructor would
+        if (!isset(self::$initializerCache[$class])) {
+            self::$initializerCache[$class] = array_values(array_filter(
+                static::$traitInitializers[$class] ?? [],
+                fn (string $method) => $method !== 'initializeHasAttributes'
+            ));
         }
-        $model->casts = self::$castsCache[$class];
+        foreach (self::$initializerCache[$class] as $method) {
+            $model->{$method}();
+        }
+
+        // Copy state from the query's model, as Eloquent's newInstance() does.
+        // $this->casts already holds the merged casts (including withCasts()).
+        $model->casts = $this->casts;
+        $model->table = $this->table;
 
         // Direct attribute assignment - bypass setRawAttributes overhead
         $model->attributes = (array) $attributes;
