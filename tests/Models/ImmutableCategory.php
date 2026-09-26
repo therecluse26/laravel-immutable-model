@@ -6,8 +6,8 @@ namespace Brighten\ImmutableModel\Tests\Models;
 
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Brighten\ImmutableModel\ImmutableModel;
-use Brighten\ImmutableModel\Relations\ImmutableBelongsTo;
-use Brighten\ImmutableModel\Relations\ImmutableHasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Immutable category model for testing self-referential relationships.
@@ -40,7 +40,7 @@ class ImmutableCategory extends ImmutableModel
     /**
      * Get the parent category.
      */
-    public function parent(): ImmutableBelongsTo
+    public function parent(): BelongsTo
     {
         return $this->belongsTo(ImmutableCategory::class, 'parent_id', 'id');
     }
@@ -48,7 +48,7 @@ class ImmutableCategory extends ImmutableModel
     /**
      * Get the child categories.
      */
-    public function children(): ImmutableHasMany
+    public function children(): HasMany
     {
         return $this->hasMany(ImmutableCategory::class, 'parent_id', 'id');
     }

@@ -6,10 +6,10 @@ namespace Brighten\ImmutableModel\Tests\Models;
 
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Brighten\ImmutableModel\ImmutableModel;
-use Brighten\ImmutableModel\ImmutableEloquentBuilder;
-use Brighten\ImmutableModel\Relations\ImmutableBelongsTo;
-use Brighten\ImmutableModel\Relations\ImmutableHasMany;
-use Brighten\ImmutableModel\Relations\ImmutableHasOne;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Brighten\ImmutableModel\Tests\Models\Mutable\UserSettings;
 
 /**
@@ -58,7 +58,7 @@ class ImmutableUser extends ImmutableModel
     /**
      * Get the user's profile.
      */
-    public function profile(): ImmutableHasOne
+    public function profile(): HasOne
     {
         return $this->hasOne(ImmutableProfile::class, 'user_id', 'id');
     }
@@ -66,7 +66,7 @@ class ImmutableUser extends ImmutableModel
     /**
      * Get the user's posts.
      */
-    public function posts(): ImmutableHasMany
+    public function posts(): HasMany
     {
         return $this->hasMany(ImmutablePost::class, 'user_id', 'id');
     }
@@ -74,7 +74,7 @@ class ImmutableUser extends ImmutableModel
     /**
      * Get the user's comments.
      */
-    public function comments(): ImmutableHasMany
+    public function comments(): HasMany
     {
         return $this->hasMany(ImmutableComment::class, 'user_id', 'id');
     }
@@ -84,7 +84,7 @@ class ImmutableUser extends ImmutableModel
      *
      * Named "mutableSettings" to avoid conflict with the "settings" JSON attribute.
      */
-    public function mutableSettings(): ImmutableHasOne
+    public function mutableSettings(): HasOne
     {
         return $this->hasOne(UserSettings::class, 'user_id', 'id');
     }
@@ -92,7 +92,7 @@ class ImmutableUser extends ImmutableModel
     /**
      * Get the user's supplier (for HasManyThrough testing).
      */
-    public function supplier(): ImmutableBelongsTo
+    public function supplier(): BelongsTo
     {
         return $this->belongsTo(ImmutableSupplier::class, 'supplier_id', 'id');
     }
@@ -100,7 +100,7 @@ class ImmutableUser extends ImmutableModel
     /**
      * Get the user's orders (for deep nesting testing).
      */
-    public function orders(): ImmutableHasMany
+    public function orders(): HasMany
     {
         return $this->hasMany(ImmutableOrder::class, 'user_id', 'id');
     }
@@ -112,7 +112,7 @@ class ImmutableUser extends ImmutableModel
     /**
      * Scope to filter verified users (email_verified_at is not null).
      */
-    public function scopeVerified(ImmutableEloquentBuilder $query): ImmutableEloquentBuilder
+    public function scopeVerified(Builder $query): Builder
     {
         return $query->whereNotNull('email_verified_at');
     }
@@ -120,7 +120,7 @@ class ImmutableUser extends ImmutableModel
     /**
      * Scope to filter by name pattern.
      */
-    public function scopeNameLike(ImmutableEloquentBuilder $query, string $pattern): ImmutableEloquentBuilder
+    public function scopeNameLike(Builder $query, string $pattern): Builder
     {
         return $query->where('name', 'like', $pattern);
     }
@@ -128,7 +128,7 @@ class ImmutableUser extends ImmutableModel
     /**
      * Scope to order by name.
      */
-    public function scopeOrderByName(ImmutableEloquentBuilder $query, string $direction = 'asc'): ImmutableEloquentBuilder
+    public function scopeOrderByName(Builder $query, string $direction = 'asc'): Builder
     {
         return $query->orderBy('name', $direction);
     }

@@ -217,7 +217,7 @@ class ImmutabilityTest extends TestCase
     public function test_query_insert_throws(): void
     {
         $this->expectException(ImmutableModelViolationException::class);
-        $this->expectExceptionMessage('Cannot call [insert]');
+        $this->expectExceptionMessage('Cannot run [insert]');
 
         ImmutableUser::query()->insert(['name' => 'Test']);
     }
@@ -225,7 +225,7 @@ class ImmutabilityTest extends TestCase
     public function test_query_update_throws(): void
     {
         $this->expectException(ImmutableModelViolationException::class);
-        $this->expectExceptionMessage('Cannot call [update]');
+        $this->expectExceptionMessage('Cannot run [update]');
 
         ImmutableUser::query()->update(['name' => 'Test']);
     }
@@ -233,7 +233,7 @@ class ImmutabilityTest extends TestCase
     public function test_query_delete_throws(): void
     {
         $this->expectException(ImmutableModelViolationException::class);
-        $this->expectExceptionMessage('Cannot call [delete]');
+        $this->expectExceptionMessage('Cannot run [delete]');
 
         ImmutableUser::query()->delete();
     }
@@ -241,7 +241,7 @@ class ImmutabilityTest extends TestCase
     public function test_query_upsert_throws(): void
     {
         $this->expectException(ImmutableModelViolationException::class);
-        $this->expectExceptionMessage('Cannot call [upsert]');
+        $this->expectExceptionMessage('Cannot run [affectingStatement]');
 
         ImmutableUser::query()->upsert([['name' => 'Test']], ['id']);
     }
@@ -249,7 +249,7 @@ class ImmutabilityTest extends TestCase
     public function test_query_truncate_throws(): void
     {
         $this->expectException(ImmutableModelViolationException::class);
-        $this->expectExceptionMessage('Cannot call [truncate]');
+        $this->expectExceptionMessage('Cannot run [statement]');
 
         ImmutableUser::query()->truncate();
     }
@@ -257,7 +257,7 @@ class ImmutabilityTest extends TestCase
     public function test_query_increment_throws(): void
     {
         $this->expectException(ImmutableModelViolationException::class);
-        $this->expectExceptionMessage('Cannot call [increment]');
+        $this->expectExceptionMessage('Cannot run [update]');
 
         ImmutableUser::query()->where('id', 1)->increment('id');
     }
@@ -265,7 +265,7 @@ class ImmutabilityTest extends TestCase
     public function test_query_decrement_throws(): void
     {
         $this->expectException(ImmutableModelViolationException::class);
-        $this->expectExceptionMessage('Cannot call [decrement]');
+        $this->expectExceptionMessage('Cannot run [update]');
 
         ImmutableUser::query()->where('id', 1)->decrement('id');
     }
@@ -273,7 +273,7 @@ class ImmutabilityTest extends TestCase
     public function test_query_force_delete_throws(): void
     {
         $this->expectException(ImmutableModelViolationException::class);
-        $this->expectExceptionMessage('Cannot call [forceDelete]');
+        $this->expectExceptionMessage('Cannot run [delete]');
 
         ImmutableUser::query()->forceDelete();
     }
@@ -287,7 +287,7 @@ class ImmutabilityTest extends TestCase
         $user = ImmutableUser::find(1);
 
         $this->expectException(ImmutableModelViolationException::class);
-        $this->expectExceptionMessage('Cannot call [create]');
+        $this->expectExceptionMessage('Cannot call [save]');
 
         $user->posts()->create(['title' => 'Test']);
     }

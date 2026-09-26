@@ -309,16 +309,32 @@ class RelationMutationBlockingTest extends TestCase
     // MorphTo Mutation Blocking
     // =========================================================================
 
-    public function test_morph_to_blocks_associate(): void
+    public function test_morph_to_associate_changes_memory_only(): void
     {
-        $this->expectException(ImmutableModelViolationException::class);
+        $before = (array) DB::table('images')->where('id', $this->image->id)->first();
+
         $this->image->imageable()->associate($this->user);
+
+        $this->assertSame($this->user->getMorphClass(), $this->image->imageable_type);
+        $this->assertSame($this->user->id, $this->image->imageable_id);
+        $this->assertSame($before, (array) DB::table('images')->where('id', $this->image->id)->first());
+
+        $this->expectException(ImmutableModelViolationException::class);
+        $this->image->save();
     }
 
-    public function test_morph_to_blocks_dissociate(): void
+    public function test_morph_to_dissociate_changes_memory_only(): void
     {
-        $this->expectException(ImmutableModelViolationException::class);
+        $before = (array) DB::table('images')->where('id', $this->image->id)->first();
+
         $this->image->imageable()->dissociate();
+
+        $this->assertNull($this->image->imageable_type);
+        $this->assertNull($this->image->imageable_id);
+        $this->assertSame($before, (array) DB::table('images')->where('id', $this->image->id)->first());
+
+        $this->expectException(ImmutableModelViolationException::class);
+        $this->image->save();
     }
 
     public function test_morph_to_blocks_update(): void
@@ -391,16 +407,31 @@ class RelationMutationBlockingTest extends TestCase
     // BelongsTo Mutation Blocking
     // =========================================================================
 
-    public function test_belongs_to_blocks_associate(): void
+    public function test_belongs_to_associate_changes_memory_only(): void
     {
+        $otherUser = ImmutableUser::fromRow(['id' => 999, 'name' => 'Other', 'email' => 'other@example.com']);
+        $before = (array) DB::table('posts')->where('id', $this->post->id)->first();
+
+        $this->post->user()->associate($otherUser);
+
+        $this->assertSame($otherUser->id, $this->post->user_id);
+        $this->assertSame($before, (array) DB::table('posts')->where('id', $this->post->id)->first());
+
         $this->expectException(ImmutableModelViolationException::class);
-        $this->post->user()->associate($this->user);
+        $this->post->save();
     }
 
-    public function test_belongs_to_blocks_dissociate(): void
+    public function test_belongs_to_dissociate_changes_memory_only(): void
     {
-        $this->expectException(ImmutableModelViolationException::class);
+        $before = (array) DB::table('posts')->where('id', $this->post->id)->first();
+
         $this->post->user()->dissociate();
+
+        $this->assertNull($this->post->user_id);
+        $this->assertSame($before, (array) DB::table('posts')->where('id', $this->post->id)->first());
+
+        $this->expectException(ImmutableModelViolationException::class);
+        $this->post->save();
     }
 
     public function test_belongs_to_blocks_update(): void

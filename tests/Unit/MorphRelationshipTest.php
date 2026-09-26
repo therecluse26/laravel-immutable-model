@@ -245,22 +245,26 @@ class MorphRelationshipTest extends TestCase
         $this->assertInstanceOf(ImmutableUser::class, $userImage->imageable);
     }
 
-    public function test_morph_to_blocks_associate(): void
+    public function test_morph_to_associate_changes_memory_only(): void
     {
         $image = ImmutableImage::find(1);
-
-        $this->expectException(ImmutableModelViolationException::class);
+        $before = (array) DB::table('images')->where('id', 1)->first();
 
         $image->imageable()->associate($this->user);
+
+        $this->assertSame($this->user, $image->imageable);
+        $this->assertSame($before, (array) DB::table('images')->where('id', 1)->first());
     }
 
-    public function test_morph_to_blocks_dissociate(): void
+    public function test_morph_to_dissociate_changes_memory_only(): void
     {
         $image = ImmutableImage::find(1);
-
-        $this->expectException(ImmutableModelViolationException::class);
+        $before = (array) DB::table('images')->where('id', 1)->first();
 
         $image->imageable()->dissociate();
+
+        $this->assertNull($image->imageable);
+        $this->assertSame($before, (array) DB::table('images')->where('id', 1)->first());
     }
 
     // =========================================================================

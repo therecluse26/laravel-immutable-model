@@ -6,11 +6,11 @@ namespace Brighten\ImmutableModel\Tests\Models;
 
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Brighten\ImmutableModel\ImmutableModel;
-use Brighten\ImmutableModel\Relations\ImmutableBelongsTo;
-use Brighten\ImmutableModel\Relations\ImmutableBelongsToMany;
-use Brighten\ImmutableModel\Relations\ImmutableHasMany;
-use Brighten\ImmutableModel\Relations\ImmutableMorphMany;
-use Brighten\ImmutableModel\Relations\ImmutableMorphOne;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Brighten\ImmutableModel\Relations\ImmutableMorphToMany;
 use Brighten\ImmutableModel\Tests\Models\Mutable\Category;
 use Brighten\ImmutableModel\Tests\Models\Mutable\PostMeta;
@@ -51,7 +51,7 @@ class ImmutablePost extends ImmutableModel
     /**
      * Get the post's author.
      */
-    public function user(): ImmutableBelongsTo
+    public function user(): BelongsTo
     {
         return $this->belongsTo(ImmutableUser::class, 'user_id', 'id');
     }
@@ -59,7 +59,7 @@ class ImmutablePost extends ImmutableModel
     /**
      * Get the post's comments.
      */
-    public function comments(): ImmutableHasMany
+    public function comments(): HasMany
     {
         return $this->hasMany(ImmutableComment::class, 'post_id', 'id');
     }
@@ -67,7 +67,7 @@ class ImmutablePost extends ImmutableModel
     /**
      * Get the post's category (mutable model).
      */
-    public function category(): ImmutableBelongsTo
+    public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class, 'category_id', 'id');
     }
@@ -75,7 +75,7 @@ class ImmutablePost extends ImmutableModel
     /**
      * Get the post's meta entries (mutable models).
      */
-    public function meta(): ImmutableHasMany
+    public function meta(): HasMany
     {
         return $this->hasMany(PostMeta::class, 'post_id', 'id');
     }
@@ -83,7 +83,7 @@ class ImmutablePost extends ImmutableModel
     /**
      * Get the post's tags (BelongsToMany via post_tag pivot).
      */
-    public function tags(): ImmutableBelongsToMany
+    public function tags(): BelongsToMany
     {
         return $this->belongsToMany(ImmutableTag::class, 'post_tag', 'post_id', 'tag_id')
             ->withPivot('order')
@@ -103,7 +103,7 @@ class ImmutablePost extends ImmutableModel
     /**
      * Get the post's featured image (MorphOne).
      */
-    public function featuredImage(): ImmutableMorphOne
+    public function featuredImage(): MorphOne
     {
         return $this->morphOne(ImmutableImage::class, 'imageable');
     }
@@ -111,7 +111,7 @@ class ImmutablePost extends ImmutableModel
     /**
      * Get all of the post's images (MorphMany).
      */
-    public function images(): ImmutableMorphMany
+    public function images(): MorphMany
     {
         return $this->morphMany(ImmutableImage::class, 'imageable');
     }

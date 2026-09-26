@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Brighten\ImmutableModel\Relations;
 
+use Brighten\ImmutableModel\Concerns\UsesReadOnlyConnection;
 use Brighten\ImmutableModel\Exceptions\ImmutableModelViolationException;
 use Illuminate\Database\Eloquent\Relations\MorphPivot;
 
@@ -15,6 +16,8 @@ use Illuminate\Database\Eloquent\Relations\MorphPivot;
  */
 class ImmutableMorphPivot extends MorphPivot
 {
+    use UsesReadOnlyConnection;
+
     /**
      * Disable timestamps auto-updating.
      *

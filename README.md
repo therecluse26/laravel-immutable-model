@@ -17,6 +17,26 @@ ImmutableModel enforces **database immutability**, not strict object immutabilit
 
 This design prevents accidental database writes while remaining compatible with common Laravel patterns like adding computed properties for API responses, serialization, and working with collections.
 
+## Guarantees and Limits
+
+ImmutableModel is a guardrail in application code. It is not a database permission system.
+
+**Blocked:** every SQL write that starts from an immutable model. Each model query runs on a `ReadOnlyConnection`, which throws on `insert`, `update`, `delete`, and any other write statement. This covers:
+
+- Model methods: `save()`, `update()`, `delete()`, `touch()`, `increment()`, ...
+- Builder methods: `User::query()->update()`, `upsert()`, `truncate()`, `insertOrIgnoreUsing()`, ...
+- Lower-level builders: `User::query()->toBase()->update()`, `->getQuery()->delete()`
+- Relations and pivots: `$post->comments()->create()`, `$post->tags()->attach()`, `sync()`, `updateExistingPivot()`, ...
+- Write methods that future Laravel versions add, because they use the same connection
+
+**Not blocked:**
+
+- `$model->getConnection()` returns the real connection. `$model->getConnection()->table('users')->update(...)` writes.
+- The `DB` facade and ordinary Eloquent models on the same table.
+- A custom pivot class set with `->using(MyPivot::class)` that extends plain `Pivot`. Extend `ImmutablePivot` instead.
+
+For a hard guarantee, connect with a database user that has read-only permissions.
+
 ## Why ImmutableModel?
 
 - **Enforce architectural boundaries**: Prevent accidental database writes at the model level
@@ -44,11 +64,11 @@ use Brighten\ImmutableModel\ImmutableModel;
 
 class UserView extends ImmutableModel
 {
-    protected string $table = 'user_views';
+    protected $table = 'user_views';
 
-    protected ?string $primaryKey = 'id';
+    protected $primaryKey = 'id';
 
-    protected array $casts = [
+    protected $casts = [
         'settings' => 'array',
         'created_at' => 'datetime',
     ];
@@ -78,31 +98,31 @@ UserView::create([...]);    // Throws ImmutableModelViolationException
 class MyModel extends ImmutableModel
 {
     // Required: The database table
-    protected string $table = 'my_table';
+    protected $table = 'my_table';
 
     // Optional: Primary key (null = non-identifiable model)
-    protected ?string $primaryKey = 'id';
+    protected $primaryKey = 'id';
 
     // Optional: Database connection (null = default)
-    protected ?string $connection = null;
+    protected $connection = null;
 
     // Optional: Attribute casting
-    protected array $casts = [
+    protected $casts = [
         'settings' => 'array',
         'created_at' => 'datetime',
     ];
 
     // Optional: Relations to eager load by default
-    protected array $with = ['author'];
+    protected $with = ['author'];
 
     // Optional: Accessors to append to array/JSON output
-    protected array $appends = ['full_name'];
+    protected $appends = ['full_name'];
 
     // Optional: Hidden attributes
-    protected array $hidden = ['internal_id'];
+    protected $hidden = ['internal_id'];
 
     // Optional: Visible attributes (whitelist)
-    protected array $visible = ['id', 'name', 'email'];
+    protected $visible = ['id', 'name', 'email'];
 }
 ```
 
@@ -145,7 +165,7 @@ Supported relationship types:
 ```php
 class Post extends ImmutableModel
 {
-    protected string $table = 'posts';
+    protected $table = 'posts';
 
     public function author()
     {
@@ -182,7 +202,7 @@ $comments = $post->comments()->where('approved', true)->get();
 Full Eloquent casting support:
 
 ```php
-protected array $casts = [
+protected $casts = [
     // Scalar types
     'count' => 'int',
     'price' => 'float',
@@ -318,7 +338,7 @@ $users = User::fromRows([
 | Events/Observers | No | Yes |
 | Mutators | No | Yes |
 | Timestamps | No | Yes |
-| Mass assignment | No | Yes |
+| Mass assignment | In memory only | Yes |
 
 ## Performance
 
@@ -372,7 +392,7 @@ ImmutableModel is ideal for:
 
 | Exception | When Thrown |
 |-----------|-------------|
-| `ImmutableModelViolationException` | Any database persistence attempt (save, update, delete, create, etc.) |
+| `ImmutableModelViolationException` | Any database write attempt (save, update, delete, create, attach, etc.). Blocked SQL is shown with `?` placeholders; binding values are never included. |
 | `ImmutableModelConfigurationException` | Invalid model configuration |
 
 ## Contributing
@@ -380,7 +400,7 @@ ImmutableModel is ideal for:
 Contributions are welcome! Please ensure all tests pass before submitting a PR:
 
 ```bash
-composer test
+./vendor/bin/phpunit
 ```
 
 ## License

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Brighten\ImmutableModel\Tests\Models;
 
 use Brighten\ImmutableModel\ImmutableModel;
-use Brighten\ImmutableModel\Relations\ImmutableMorphTo;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 /**
  * Immutable image model for testing MorphTo.
@@ -35,7 +35,7 @@ class ImmutableImage extends ImmutableModel
     /**
      * Get the parent imageable model (Post, User, etc.).
      */
-    public function imageable(): ImmutableMorphTo
+    public function imageable(): MorphTo
     {
         return $this->morphTo();
     }

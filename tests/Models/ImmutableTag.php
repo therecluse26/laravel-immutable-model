@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Brighten\ImmutableModel\Tests\Models;
 
 use Brighten\ImmutableModel\ImmutableModel;
-use Brighten\ImmutableModel\Relations\ImmutableBelongsToMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Brighten\ImmutableModel\Relations\ImmutableMorphToMany;
 
 /**
@@ -32,7 +32,7 @@ class ImmutableTag extends ImmutableModel
     /**
      * Get the posts that have this tag (BelongsToMany).
      */
-    public function posts(): ImmutableBelongsToMany
+    public function posts(): BelongsToMany
     {
         return $this->belongsToMany(ImmutablePost::class, 'post_tag', 'tag_id', 'post_id');
     }

@@ -6,8 +6,8 @@ namespace Brighten\ImmutableModel\Tests\Models;
 
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Brighten\ImmutableModel\ImmutableModel;
-use Brighten\ImmutableModel\Relations\ImmutableBelongsTo;
-use Brighten\ImmutableModel\Relations\ImmutableHasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Immutable order model for testing deep nesting.
@@ -41,7 +41,7 @@ class ImmutableOrder extends ImmutableModel
     /**
      * Get the user who placed the order.
      */
-    public function user(): ImmutableBelongsTo
+    public function user(): BelongsTo
     {
         return $this->belongsTo(ImmutableUser::class, 'user_id', 'id');
     }
@@ -49,7 +49,7 @@ class ImmutableOrder extends ImmutableModel
     /**
      * Get the order items.
      */
-    public function items(): ImmutableHasMany
+    public function items(): HasMany
     {
         return $this->hasMany(ImmutableOrderItem::class, 'order_id', 'id');
     }

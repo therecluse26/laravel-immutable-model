@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Brighten\ImmutableModel\Tests\Unit;
 
 use BadMethodCallException;
-use Brighten\ImmutableModel\ImmutableEloquentBuilder;
+use Illuminate\Database\Eloquent\Builder;
 use Brighten\ImmutableModel\Tests\Models\ScopedModel;
 use Brighten\ImmutableModel\Tests\TestCase;
 
@@ -68,7 +68,7 @@ class LocalScopeTest extends TestCase
     {
         $builder = ScopedModel::query()->verified();
 
-        $this->assertInstanceOf(ImmutableEloquentBuilder::class, $builder);
+        $this->assertInstanceOf(Builder::class, $builder);
 
         // Verify the query was modified by checking results
         $users = $builder->get();
@@ -110,14 +110,14 @@ class LocalScopeTest extends TestCase
         // Since our test data is from 2024-01-01, none should be "recent"
         // relative to now(), but we can test that the method accepts no params
         $builder = ScopedModel::query()->recent();
-        $this->assertInstanceOf(ImmutableEloquentBuilder::class, $builder);
+        $this->assertInstanceOf(Builder::class, $builder);
     }
 
     public function test_local_scope_with_explicit_parameter(): void
     {
         // Pass explicit days parameter
         $builder = ScopedModel::query()->recent(30);
-        $this->assertInstanceOf(ImmutableEloquentBuilder::class, $builder);
+        $this->assertInstanceOf(Builder::class, $builder);
     }
 
     public function test_calling_undefined_scope_throws_exception(): void
@@ -139,10 +139,10 @@ class LocalScopeTest extends TestCase
     {
         $builder = ScopedModel::query()->verified();
 
-        $this->assertInstanceOf(ImmutableEloquentBuilder::class, $builder);
+        $this->assertInstanceOf(Builder::class, $builder);
 
         // Should be able to continue chaining
         $builder2 = $builder->where('id', '>', 0);
-        $this->assertInstanceOf(ImmutableEloquentBuilder::class, $builder2);
+        $this->assertInstanceOf(Builder::class, $builder2);
     }
 }

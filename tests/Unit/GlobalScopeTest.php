@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace Brighten\ImmutableModel\Tests\Unit;
 
-use Brighten\ImmutableModel\ImmutableEloquentBuilder;
+use Illuminate\Database\Eloquent\Builder;
 use Brighten\ImmutableModel\Tests\Models\ScopedModel;
 use Brighten\ImmutableModel\Tests\TestCase;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Scope;
 

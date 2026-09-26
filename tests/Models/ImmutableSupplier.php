@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Brighten\ImmutableModel\Tests\Models;
 
 use Brighten\ImmutableModel\ImmutableModel;
-use Brighten\ImmutableModel\Relations\ImmutableBelongsTo;
-use Brighten\ImmutableModel\Relations\ImmutableHasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
@@ -41,7 +41,7 @@ class ImmutableSupplier extends ImmutableModel
     /**
      * Get the supplier's country.
      */
-    public function country(): ImmutableBelongsTo
+    public function country(): BelongsTo
     {
         return $this->belongsTo(ImmutableCountry::class, 'country_id', 'id');
     }
@@ -49,7 +49,7 @@ class ImmutableSupplier extends ImmutableModel
     /**
      * Get the supplier's users.
      */
-    public function users(): ImmutableHasMany
+    public function users(): HasMany
     {
         return $this->hasMany(ImmutableUser::class, 'supplier_id', 'id');
     }

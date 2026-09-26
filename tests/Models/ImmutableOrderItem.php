@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Brighten\ImmutableModel\Tests\Models;
 
 use Brighten\ImmutableModel\ImmutableModel;
-use Brighten\ImmutableModel\Relations\ImmutableBelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * Immutable order item model for testing deep nesting.
@@ -41,7 +41,7 @@ class ImmutableOrderItem extends ImmutableModel
     /**
      * Get the order this item belongs to.
      */
-    public function order(): ImmutableBelongsTo
+    public function order(): BelongsTo
     {
         return $this->belongsTo(ImmutableOrder::class, 'order_id', 'id');
     }
@@ -49,7 +49,7 @@ class ImmutableOrderItem extends ImmutableModel
     /**
      * Get the product for this item.
      */
-    public function product(): ImmutableBelongsTo
+    public function product(): BelongsTo
     {
         return $this->belongsTo(ImmutableProduct::class, 'product_uuid', 'uuid');
     }

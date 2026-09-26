@@ -15,7 +15,7 @@ use Brighten\ImmutableModel\Tests\Models\ImmutablePost;
  * These tests systematically verify that ImmutableModel behavior matches
  * Eloquent exactly for all read operations, including edge cases.
  *
- * Based on MECHANICAL_PARITY_AUDIT.md Phase 1.1: Attribute Access
+ * Covers attribute access parity with Eloquent.
  */
 class MechanicalParityTest extends ParityTestCase
 {

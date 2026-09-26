@@ -3,8 +3,6 @@
 
 **Namespace**: `Brighten\ImmutableModel`
 
-Output `<promise>IMMUTABLE_MODEL_COMPLETE</promise>` when all phases are done.
-
 ---
 
 ## Purpose
@@ -38,9 +36,10 @@ Immutability is enforced by:
 1. Overriding ~32 persistence methods with `never` return type (throws exception)
 2. Disabling events via no-op implementations
 3. Disabling dirty tracking via no-op implementations
-4. Using `ImmutableEloquentBuilder` that blocks bulk mutations
-5. Using custom relation classes that block relation mutations
-6. Using `ImmutablePivot`/`ImmutableMorphPivot` for pivot models
+4. Binding every model query to `ReadOnlyConnection`, whose 6 SQL write methods throw (`insert`, `update`, `delete`, `statement`, `affectingStatement`, `unprepared`)
+5. Using `ImmutablePivot`/`ImmutableMorphPivot` for pivot models
+
+Builders and relations are plain Eloquent classes. Their writes reach `ReadOnlyConnection` and throw, so they need no per-method blocklists. This also blocks write methods that future Laravel releases add.
 
 ---
 
@@ -78,17 +77,17 @@ A phase MUST be complete before the next begins.
 - No ServiceProvider is required; the package works standalone
 
 (Reference skeleton; do not treat as runnable code)
-- abstract class ImmutableModel implements ArrayAccess, JsonSerializable
-  - protected string $table
-  - protected ?string $primaryKey = 'id'
-  - protected ?string $connection = null  // null = Laravel's default connection
-  - protected bool $incrementing = false
-  - protected string $keyType = 'int'
-  - protected array $casts = []
-  - protected array $with = []
-  - protected array $appends = []
-  - protected array $hidden = []
-  - protected array $visible = []
+- abstract class ImmutableModel extends Illuminate\Database\Eloquent\Model
+  - Subclasses declare properties WITHOUT types, because `Model` declares them untyped (a typed redeclaration is a PHP fatal error)
+  - protected $table
+  - protected $primaryKey = 'id'
+  - protected $connection = null  // null = Laravel's default connection
+  - protected $keyType = 'int'
+  - protected $casts = []
+  - protected $with = []
+  - protected $appends = []
+  - protected $hidden = []
+  - protected $visible = []
 
 ### Connection Default
 - `$connection = null` means use Laravel's default connection (`config('database.default')`)
@@ -148,12 +147,12 @@ The `fromRow()` and `fromRows()` methods are public convenience wrappers that de
   - Accessors (`getXxxAttribute`)
   - `$appends`, `$hidden`, `$visible`
   - `toArray()`, `toJson()`, `JsonSerializable`
-- Any attempt to mutate attributes or relations MUST throw immediately
-  - `__set()` throws
-  - `offsetSet()` throws
-  - `offsetUnset()` throws
-  - Relation reassignment throws
-- No silent failures
+- In-memory changes are allowed; they never reach the database
+  - `__set()`, `offsetSet()`, `offsetUnset()`, `fill()` work in memory
+  - `associate()` / `dissociate()` work in memory
+  - This keeps computed fields and API Resources working
+- Every database write MUST throw immediately
+- No silent failures: a persistence method that could succeed without SQL (e.g. `save()` on a clean model) MUST throw too
 
 ---
 
@@ -175,7 +174,7 @@ The `fromRow()` and `fromRows()` methods are public convenience wrappers that de
 
 ### Builder
 - Query ergonomics match Eloquent (by inheritance)
-- `ImmutableEloquentBuilder` extends `Eloquent\Builder` and blocks bulk mutation methods
+- Models use plain `Eloquent\Builder`; its writes throw at `ReadOnlyConnection`
 - Fluent, chainable API (inherited from Eloquent)
 
 ### Supported Read Methods
@@ -231,10 +230,7 @@ Full pagination support:
 - `save()`, `push()`, `touch()`, `increment()`, `decrement()`
 - `forceDelete()`, `restore()`, `truncate()`
 
-(Reference shape; not a fenced code block)
-- class ImmutableEloquentBuilder extends Eloquent\Builder
-  - All read methods inherited from Eloquent\Builder
-  - Blocked: insert(), update(), delete(), truncate(), upsert(), etc.
+These throw at `ReadOnlyConnection` (builder, relation and pivot writes, including `toBase()` and `getQuery()`), or in `ImmutableModel` overrides (model persistence methods).
 
 ---
 
@@ -473,21 +469,14 @@ Document clearly:
 ```
 src/
 ├── ImmutableModel.php              # Abstract base class (extends Eloquent\Model)
-├── ImmutableEloquentBuilder.php    # Read-only query builder (extends Eloquent\Builder)
+├── ReadOnlyConnection.php          # Connection wrapper; SQL writes throw
+├── Concerns/
+│   └── UsesReadOnlyConnection.php  # Binds model queries to ReadOnlyConnection
 ├── Exceptions/
 │   ├── ImmutableModelViolationException.php
 │   └── ImmutableModelConfigurationException.php
 └── Relations/
-    ├── ImmutableBelongsTo.php
-    ├── ImmutableBelongsToMany.php
-    ├── ImmutableHasOne.php
-    ├── ImmutableHasMany.php
-    ├── ImmutableHasOneThrough.php
-    ├── ImmutableHasManyThrough.php
-    ├── ImmutableMorphOne.php
-    ├── ImmutableMorphMany.php
-    ├── ImmutableMorphTo.php
-    ├── ImmutableMorphToMany.php
+    ├── ImmutableMorphToMany.php    # Only overrides newPivot()
     ├── ImmutablePivot.php          # Immutable pivot for BelongsToMany
     └── ImmutableMorphPivot.php     # Immutable pivot for MorphToMany
 
@@ -505,15 +494,16 @@ tests/
 │   ├── RelationshipTest.php
 │   ├── CastingTest.php
 │   ├── CollectionTest.php
-│   └── GlobalScopeTest.php
+│   ├── GlobalScopeTest.php
+│   └── ReadOnlyConnectionTest.php
 └── Benchmarks/
     └── HydrationBenchmark.php
 ```
 
 ---
 
-## Completion Gate (Claude Loop Critical)
-Output `<promise>IMMUTABLE_MODEL_COMPLETE</promise>` **only after**:
+## Definition of Done
+The package is complete only when:
 - All tests pass
 - All forbidden features are provably unreachable
 - The full public API is documented

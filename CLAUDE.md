@@ -25,10 +25,11 @@ These constraints are absolute and must never be violated:
 | File | Purpose |
 |------|---------|
 | `src/ImmutableModel.php` | Abstract base class extending Eloquent\Model with persistence blocked |
-| `src/ImmutableEloquentBuilder.php` | Query builder extending Eloquent\Builder with bulk mutations blocked |
-| `src/Relations/` | Immutable relationship classes (extend Eloquent relations, block mutations) |
-| `src/Relations/ImmutablePivot.php` | Immutable pivot model for BelongsToMany |
+| `src/ReadOnlyConnection.php` | Connection wrapper: the 6 SQL write methods throw, everything else delegates |
+| `src/Concerns/UsesReadOnlyConnection.php` | Trait: `newBaseQueryBuilder()` binds every model query to `ReadOnlyConnection` |
+| `src/Relations/ImmutablePivot.php` | Immutable pivot model for BelongsToMany (returned by `ImmutableModel::newPivot()`) |
 | `src/Relations/ImmutableMorphPivot.php` | Immutable pivot model for MorphToMany |
+| `src/Relations/ImmutableMorphToMany.php` | Only overrides `newPivot()`, because Laravel hard-codes `MorphPivot` there |
 | `src/Exceptions/` | Exception classes for violations and config errors |
 | `immutable-model-spec.md` | **Full specification** - read this for detailed requirements |
 
@@ -45,12 +46,20 @@ abstract class ImmutableModel extends Model
 {
     public $timestamps = false;  // Disable auto-timestamps
 
+    use UsesReadOnlyConnection;  // Every SQL write throws at the connection
+
     // Override persistence methods to throw
     // Override event methods to no-op
     // Override dirty tracking to no-op
-    // Use custom relation factories
 }
 ```
+
+### Two layers of blocking
+
+1. **`ReadOnlyConnection` (the main layer).** All SQL writes in Laravel's query builder go through 6 methods on `ConnectionInterface`: `insert`, `update`, `delete`, `statement`, `affectingStatement`, `unprepared`. `ReadOnlyConnection` makes these throw `ImmutableModelViolationException::writeAttempt()`. This covers Eloquent builder writes, relation writes, pivot writes, `toBase()`, `getQuery()`, and write methods that future Laravel releases add. Do **not** add per-method blocklists to builders or relations.
+2. **Model persistence overrides (the second layer).** `save()`, `delete()`, `touch()`, and the others throw directly. They are necessary because some of them return early without SQL (for example, `save()` on a clean model returns `true`). That would be a silent success.
+
+**Not covered:** `$model->getConnection()` returns the real connection, and `DB::` is not wrapped. A read-only database user is the only hard guarantee.
 
 ### Persistence Methods (all throw)
 ```php
@@ -82,37 +91,17 @@ public function isDirty($attributes = null): bool { return false; }
 public function isClean($attributes = null): bool { return true; }
 ```
 
-### Query Builder
-```php
-// ImmutableEloquentBuilder blocks bulk mutations
-public function insert(array $values): never { throw ...; }
-public function update(array $values): never { throw ...; }
-public function delete(): never { throw ...; }
-public function truncate(): never { throw ...; }
-```
+### Query Builder and Relations
+Models use Laravel's plain `Eloquent\Builder` and plain Eloquent relation classes (`HasMany`, `BelongsTo`, ...). They need no overrides: their SQL writes reach `ReadOnlyConnection` and throw.
 
-### Relation Classes
-```php
-// Each relation class extends its Eloquent counterpart and blocks mutations
-class ImmutableBelongsTo extends BelongsTo {
-    public function associate($model): never { throw ...; }
-    public function dissociate(): never { throw ...; }
-}
-```
+In-memory changes are allowed: `$model->name = 'x'`, `fill()`, `associate()`, `dissociate()`. Only database writes throw.
 
 ## Supported Features
 
 ### Relationships
-- `belongsTo()` - ImmutableBelongsTo
-- `hasOne()` - ImmutableHasOne
-- `hasMany()` - ImmutableHasMany
-- `belongsToMany()` - ImmutableBelongsToMany (with ImmutablePivot)
-- `hasOneThrough()` - ImmutableHasOneThrough
-- `hasManyThrough()` - ImmutableHasManyThrough
-- `morphOne()` - ImmutableMorphOne
-- `morphMany()` - ImmutableMorphMany
-- `morphTo()` - ImmutableMorphTo
-- `morphToMany()` - ImmutableMorphToMany
+- `belongsTo()`, `hasOne()`, `hasMany()`, `hasOneThrough()`, `hasManyThrough()`, `morphOne()`, `morphMany()`, `morphTo()` - plain Eloquent relation classes
+- `belongsToMany()` - plain `BelongsToMany`; pivots are `ImmutablePivot` (via `ImmutableModel::newPivot()`)
+- `morphToMany()`, `morphedByMany()` - `ImmutableMorphToMany`; pivots are `ImmutableMorphPivot`
 
 ### Casting
 - Scalar: `int`, `float`, `bool`, `string`
@@ -135,7 +124,7 @@ These features are disabled (throw exceptions or return no-op values):
 - **Dirty tracking** - `isDirty()` returns false, `getDirty()` returns empty array (no-op, not absent)
 - **Timestamps** - `$timestamps = false`, `touch()` throws
 - **Model events** - All event methods are no-ops (events never fire)
-- **Mass assignment** - `fill()` works for internal hydration but `$fillable`/`$guarded` are not used
+- **Mass assignment** - `$guarded = []`: `fill()` works in memory, so relation `create()` reaches `save()` and throws `ImmutableModelViolationException`
 - **Mutators** - `setXxxAttribute` methods are not called (no mutation path reaches them)
 
 Note: These methods exist (inherited from Eloquent) but are overridden to be safe.
@@ -183,8 +172,8 @@ use Brighten\ImmutableModel\Exceptions\ImmutableModelConfigurationException;
 
 // Mutation attempts
 throw ImmutableModelViolationException::attributeMutation($key);
-throw ImmutableModelViolationException::relationMutation($relation);
 throw ImmutableModelViolationException::persistenceAttempt($method);
+throw ImmutableModelViolationException::writeAttempt($operation, $sql); // ReadOnlyConnection only; never include bindings
 
 // Configuration errors
 throw ImmutableModelConfigurationException::missingPrimaryKey($class);
@@ -195,8 +184,8 @@ throw ImmutableModelConfigurationException::forbiddenProperty($property);
 
 | Want to... | Do this |
 |------------|---------|
-| Add a query method | Eloquent methods are inherited automatically; block mutations in `ImmutableEloquentBuilder` |
-| Add a relationship | Create in `src/Relations/`, extend Eloquent relation, block mutation methods |
+| Add a query method | Eloquent methods are inherited automatically; their writes already throw at `ReadOnlyConnection` |
+| Add a relationship | Nothing to do: plain Eloquent relations are read-only through `ReadOnlyConnection`. Only add a class if Laravel builds a mutable pivot itself (see `ImmutableMorphToMany`) |
 | Add a cast type | Uses Eloquent's native casting - just define in model's `$casts` array |
-| Block a method | Override and throw `ImmutableModelViolationException` |
-| Test mutation blocking | Use `$this->expectException(ImmutableModelViolationException::class)` |
+| Block a write | It is already blocked if it runs SQL. Override on `ImmutableModel` only if it can succeed without SQL (e.g. `save()` on a clean model) |
+| Test mutation blocking | Use `$this->expectException(ImmutableModelViolationException::class)`, and assert the database did not change (see `assertWriteBlocked()` in `tests/Unit/ReadOnlyConnectionTest.php`) |

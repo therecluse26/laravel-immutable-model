@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Brighten\ImmutableModel\Tests\Models;
 
 use Brighten\ImmutableModel\ImmutableModel;
-use Brighten\ImmutableModel\Relations\ImmutableBelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * Immutable profile model for testing.
@@ -32,7 +32,7 @@ class ImmutableProfile extends ImmutableModel
     /**
      * Get the profile's user.
      */
-    public function user(): ImmutableBelongsTo
+    public function user(): BelongsTo
     {
         return $this->belongsTo(ImmutableUser::class, 'user_id', 'id');
     }

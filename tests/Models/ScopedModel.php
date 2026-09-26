@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Brighten\ImmutableModel\Tests\Models;
 
-use Brighten\ImmutableModel\ImmutableEloquentBuilder;
+use Illuminate\Database\Eloquent\Builder;
 use Brighten\ImmutableModel\ImmutableModel;
 
 /**
@@ -23,7 +23,7 @@ class ScopedModel extends ImmutableModel
     /**
      * Scope to filter verified users (email_verified_at is not null).
      */
-    public function scopeVerified(ImmutableEloquentBuilder $query): ImmutableEloquentBuilder
+    public function scopeVerified(Builder $query): Builder
     {
         return $query->whereNotNull('email_verified_at');
     }
@@ -31,7 +31,7 @@ class ScopedModel extends ImmutableModel
     /**
      * Scope to filter recent users (created in the last N days).
      */
-    public function scopeRecent(ImmutableEloquentBuilder $query, int $days = 7): ImmutableEloquentBuilder
+    public function scopeRecent(Builder $query, int $days = 7): Builder
     {
         return $query->where('created_at', '>=', now()->subDays($days)->toDateTimeString());
     }
@@ -39,7 +39,7 @@ class ScopedModel extends ImmutableModel
     /**
      * Scope to filter by name pattern.
      */
-    public function scopeNameLike(ImmutableEloquentBuilder $query, string $pattern): ImmutableEloquentBuilder
+    public function scopeNameLike(Builder $query, string $pattern): Builder
     {
         return $query->where('name', 'like', $pattern);
     }
@@ -47,7 +47,7 @@ class ScopedModel extends ImmutableModel
     /**
      * Scope to order by name.
      */
-    public function scopeOrderByName(ImmutableEloquentBuilder $query, string $direction = 'asc'): ImmutableEloquentBuilder
+    public function scopeOrderByName(Builder $query, string $direction = 'asc'): Builder
     {
         return $query->orderBy('name', $direction);
     }

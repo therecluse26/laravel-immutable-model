@@ -6,7 +6,7 @@ namespace Brighten\ImmutableModel\Tests\Parity;
 
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Brighten\ImmutableModel\ImmutableModel;
-use Brighten\ImmutableModel\ImmutableEloquentBuilder;
+use Illuminate\Database\Eloquent\Builder;
 use Brighten\ImmutableModel\Tests\Models\ImmutableUser;
 use ReflectionClass;
 
@@ -73,7 +73,7 @@ class ApiSurfaceTest extends ParityTestCase
     // =========================================================================
 
     /**
-     * @var array<string> Methods that must exist on ImmutableEloquentBuilder
+     * @var array<string> Methods that must exist on Builder
      */
     private array $requiredQueryBuilderMethods = [
         // Execution
@@ -142,7 +142,7 @@ class ApiSurfaceTest extends ParityTestCase
         foreach ($this->requiredQueryBuilderMethods as $method) {
             $this->assertTrue(
                 is_callable([$builder, $method]),
-                "ImmutableEloquentBuilder is missing required method: {$method}"
+                "Builder is missing required method: {$method}"
             );
         }
     }
@@ -271,19 +271,19 @@ class ApiSurfaceTest extends ParityTestCase
     public function test_static_query_returns_builder(): void
     {
         $builder = ImmutableUser::query();
-        $this->assertInstanceOf(ImmutableEloquentBuilder::class, $builder);
+        $this->assertInstanceOf(Builder::class, $builder);
     }
 
     public function test_static_where_returns_builder(): void
     {
         $builder = ImmutableUser::where('id', 1);
-        $this->assertInstanceOf(ImmutableEloquentBuilder::class, $builder);
+        $this->assertInstanceOf(Builder::class, $builder);
     }
 
     public function test_static_with_returns_builder(): void
     {
         $builder = ImmutableUser::with('posts');
-        $this->assertInstanceOf(ImmutableEloquentBuilder::class, $builder);
+        $this->assertInstanceOf(Builder::class, $builder);
     }
 
     public function test_chaining_pattern(): void
@@ -294,7 +294,7 @@ class ApiSurfaceTest extends ParityTestCase
             ->with('posts')
             ->limit(10);
 
-        $this->assertInstanceOf(ImmutableEloquentBuilder::class, $builder);
+        $this->assertInstanceOf(Builder::class, $builder);
     }
 
     public function test_get_returns_immutable_collection(): void

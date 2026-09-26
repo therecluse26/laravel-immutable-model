@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Brighten\ImmutableModel;
 
+use Brighten\ImmutableModel\Concerns\UsesReadOnlyConnection;
 use Brighten\ImmutableModel\Exceptions\ImmutableModelViolationException;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\Eloquent\Builder;
@@ -23,12 +24,25 @@ use ReflectionClass;
  */
 abstract class ImmutableModel extends Model
 {
+    use UsesReadOnlyConnection;
+
     /**
      * Disable timestamps auto-updating.
      *
      * @var bool
      */
     public $timestamps = false;
+
+    /**
+     * Allow in-memory fill() of any attribute.
+     *
+     * Mass-assignment protection guards database writes, and writes always
+     * throw. Without this, relation create() would throw MassAssignmentException
+     * before the write reaches save() and throws ImmutableModelViolationException.
+     *
+     * @var array<string>|bool
+     */
+    protected $guarded = [];
 
     // =========================================================================
     // DISABLE EVENT SYSTEM
@@ -538,198 +552,34 @@ abstract class ImmutableModel extends Model
     }
 
     // =========================================================================
-    // CUSTOM BUILDER
+    // PIVOT MODELS
     // =========================================================================
 
     /**
-     * Create a new Eloquent query builder for the model.
+     * Create a new pivot model instance.
      *
-     * @param \Illuminate\Database\Query\Builder $query
-     * @return ImmutableEloquentBuilder
-     */
-    public function newEloquentBuilder($query)
-    {
-        return new ImmutableEloquentBuilder($query);
-    }
-
-    // =========================================================================
-    // CUSTOM RELATION FACTORIES
-    // =========================================================================
-
-    /**
-     * Instantiate a new BelongsTo relationship.
+     * BelongsToMany asks the related model for its pivot, so returning
+     * ImmutablePivot here keeps belongsToMany() pivots immutable.
      *
-     * @param Builder $query
-     * @param Model $child
-     * @param string $foreignKey
-     * @param string $ownerKey
-     * @param string $relation
-     * @return Relations\ImmutableBelongsTo
-     */
-    protected function newBelongsTo(Builder $query, Model $child, $foreignKey, $ownerKey, $relation)
-    {
-        return new Relations\ImmutableBelongsTo($query, $child, $foreignKey, $ownerKey, $relation);
-    }
-
-    /**
-     * Instantiate a new HasOne relationship.
-     *
-     * @param Builder $query
      * @param Model $parent
-     * @param string $foreignKey
-     * @param string $localKey
-     * @return Relations\ImmutableHasOne
-     */
-    protected function newHasOne(Builder $query, Model $parent, $foreignKey, $localKey)
-    {
-        return new Relations\ImmutableHasOne($query, $parent, $foreignKey, $localKey);
-    }
-
-    /**
-     * Instantiate a new HasMany relationship.
-     *
-     * @param Builder $query
-     * @param Model $parent
-     * @param string $foreignKey
-     * @param string $localKey
-     * @return Relations\ImmutableHasMany
-     */
-    protected function newHasMany(Builder $query, Model $parent, $foreignKey, $localKey)
-    {
-        return new Relations\ImmutableHasMany($query, $parent, $foreignKey, $localKey);
-    }
-
-    /**
-     * Instantiate a new BelongsToMany relationship.
-     *
-     * @param Builder $query
-     * @param Model $parent
+     * @param array $attributes
      * @param string $table
-     * @param string $foreignPivotKey
-     * @param string $relatedPivotKey
-     * @param string $parentKey
-     * @param string $relatedKey
-     * @param string|null $relationName
-     * @return Relations\ImmutableBelongsToMany
+     * @param bool $exists
+     * @param string|null $using
+     * @return \Illuminate\Database\Eloquent\Relations\Pivot
      */
-    protected function newBelongsToMany(
-        Builder $query,
-        Model $parent,
-        $table,
-        $foreignPivotKey,
-        $relatedPivotKey,
-        $parentKey,
-        $relatedKey,
-        $relationName = null
-    ) {
-        return new Relations\ImmutableBelongsToMany(
-            $query, $parent, $table, $foreignPivotKey,
-            $relatedPivotKey, $parentKey, $relatedKey, $relationName
-        );
-    }
-
-    /**
-     * Instantiate a new HasOneThrough relationship.
-     *
-     * @param Builder $query
-     * @param Model $farParent
-     * @param Model $throughParent
-     * @param string $firstKey
-     * @param string $secondKey
-     * @param string $localKey
-     * @param string $secondLocalKey
-     * @return Relations\ImmutableHasOneThrough
-     */
-    protected function newHasOneThrough(
-        Builder $query,
-        Model $farParent,
-        Model $throughParent,
-        $firstKey,
-        $secondKey,
-        $localKey,
-        $secondLocalKey
-    ) {
-        return new Relations\ImmutableHasOneThrough(
-            $query, $farParent, $throughParent, $firstKey,
-            $secondKey, $localKey, $secondLocalKey
-        );
-    }
-
-    /**
-     * Instantiate a new HasManyThrough relationship.
-     *
-     * @param Builder $query
-     * @param Model $farParent
-     * @param Model $throughParent
-     * @param string $firstKey
-     * @param string $secondKey
-     * @param string $localKey
-     * @param string $secondLocalKey
-     * @return Relations\ImmutableHasManyThrough
-     */
-    protected function newHasManyThrough(
-        Builder $query,
-        Model $farParent,
-        Model $throughParent,
-        $firstKey,
-        $secondKey,
-        $localKey,
-        $secondLocalKey
-    ) {
-        return new Relations\ImmutableHasManyThrough(
-            $query, $farParent, $throughParent, $firstKey,
-            $secondKey, $localKey, $secondLocalKey
-        );
-    }
-
-    /**
-     * Instantiate a new MorphOne relationship.
-     *
-     * @param Builder $query
-     * @param Model $parent
-     * @param string $type
-     * @param string $id
-     * @param string $localKey
-     * @return Relations\ImmutableMorphOne
-     */
-    protected function newMorphOne(Builder $query, Model $parent, $type, $id, $localKey)
+    public function newPivot(Model $parent, array $attributes, $table, $exists, $using = null)
     {
-        return new Relations\ImmutableMorphOne($query, $parent, $type, $id, $localKey);
-    }
-
-    /**
-     * Instantiate a new MorphMany relationship.
-     *
-     * @param Builder $query
-     * @param Model $parent
-     * @param string $type
-     * @param string $id
-     * @param string $localKey
-     * @return Relations\ImmutableMorphMany
-     */
-    protected function newMorphMany(Builder $query, Model $parent, $type, $id, $localKey)
-    {
-        return new Relations\ImmutableMorphMany($query, $parent, $type, $id, $localKey);
-    }
-
-    /**
-     * Instantiate a new MorphTo relationship.
-     *
-     * @param Builder $query
-     * @param Model $parent
-     * @param string $foreignKey
-     * @param string $ownerKey
-     * @param string $type
-     * @param string $relation
-     * @return Relations\ImmutableMorphTo
-     */
-    protected function newMorphTo(Builder $query, Model $parent, $foreignKey, $ownerKey, $type, $relation)
-    {
-        return new Relations\ImmutableMorphTo($query, $parent, $foreignKey, $ownerKey, $type, $relation);
+        return $using
+            ? $using::fromRawAttributes($parent, $attributes, $table, $exists)
+            : Relations\ImmutablePivot::fromAttributes($parent, $attributes, $table, $exists);
     }
 
     /**
      * Instantiate a new MorphToMany relationship.
+     *
+     * MorphToMany builds its pivot itself (it does not ask the related model),
+     * so ImmutableMorphToMany overrides newPivot() to return ImmutableMorphPivot.
      *
      * @param Builder $query
      * @param Model $parent

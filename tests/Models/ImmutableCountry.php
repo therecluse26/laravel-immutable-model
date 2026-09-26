@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Brighten\ImmutableModel\Tests\Models;
 
 use Brighten\ImmutableModel\ImmutableModel;
-use Brighten\ImmutableModel\Relations\ImmutableHasMany;
-use Brighten\ImmutableModel\Relations\ImmutableHasManyThrough;
-use Brighten\ImmutableModel\Relations\ImmutableHasOneThrough;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 
 /**
  * Immutable country model for testing HasManyThrough.
@@ -33,7 +33,7 @@ class ImmutableCountry extends ImmutableModel
     /**
      * Get the country's suppliers.
      */
-    public function suppliers(): ImmutableHasMany
+    public function suppliers(): HasMany
     {
         return $this->hasMany(ImmutableSupplier::class, 'country_id', 'id');
     }
@@ -41,7 +41,7 @@ class ImmutableCountry extends ImmutableModel
     /**
      * Get all users through suppliers (HasManyThrough).
      */
-    public function users(): ImmutableHasManyThrough
+    public function users(): HasManyThrough
     {
         return $this->hasManyThrough(
             ImmutableUser::class,
@@ -56,7 +56,7 @@ class ImmutableCountry extends ImmutableModel
     /**
      * Get the first user through suppliers (HasOneThrough).
      */
-    public function firstUser(): ImmutableHasOneThrough
+    public function firstUser(): HasOneThrough
     {
         return $this->hasOneThrough(
             ImmutableUser::class,

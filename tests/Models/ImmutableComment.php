@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Brighten\ImmutableModel\Tests\Models;
 
 use Brighten\ImmutableModel\ImmutableModel;
-use Brighten\ImmutableModel\Relations\ImmutableBelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * Immutable comment model for testing.
@@ -37,7 +37,7 @@ class ImmutableComment extends ImmutableModel
     /**
      * Get the comment's post.
      */
-    public function post(): ImmutableBelongsTo
+    public function post(): BelongsTo
     {
         return $this->belongsTo(ImmutablePost::class, 'post_id', 'id');
     }
@@ -45,7 +45,7 @@ class ImmutableComment extends ImmutableModel
     /**
      * Get the comment's author.
      */
-    public function user(): ImmutableBelongsTo
+    public function user(): BelongsTo
     {
         return $this->belongsTo(ImmutableUser::class, 'user_id', 'id');
     }
