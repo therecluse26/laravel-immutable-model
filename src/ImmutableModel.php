@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Brighten\ImmutableModel;
 
+use Brighten\ImmutableModel\Concerns\SerializesDatesNatively;
 use Brighten\ImmutableModel\Concerns\UsesReadOnlyConnection;
 use Brighten\ImmutableModel\Exceptions\ImmutableModelConfigurationException;
 use Brighten\ImmutableModel\Exceptions\ImmutableModelViolationException;
@@ -27,6 +28,7 @@ use ReflectionClass;
  */
 abstract class ImmutableModel extends Model
 {
+    use SerializesDatesNatively;
     use UsesReadOnlyConnection;
 
     /**
