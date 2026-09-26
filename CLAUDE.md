@@ -44,8 +44,6 @@ The package extends `Eloquent\Model` and enforces immutability through method ov
 // ImmutableModel extends Eloquent\Model
 abstract class ImmutableModel extends Model
 {
-    public $timestamps = false;  // Disable auto-timestamps
-
     use UsesReadOnlyConnection;  // Every SQL write throws at the connection
 
     // Override persistence methods to throw
@@ -122,7 +120,7 @@ These features are disabled (throw exceptions or return no-op values):
 
 - **Persistence methods** - `save()`, `update()`, `delete()`, `create()`, `insert()`, `upsert()` all throw
 - **Dirty tracking** - `isDirty()` returns false, `getDirty()` returns empty array (no-op, not absent)
-- **Timestamps** - `$timestamps = false`, `touch()` throws
+- **Timestamps** - `$timestamps` stays `true` so `created_at`/`updated_at` are read as dates like Eloquent; `touch()` throws
 - **Model events** - All event methods are no-ops (events never fire)
 - **Mass assignment** - `$guarded = []`: `fill()` works in memory, so relation `create()` reaches `save()` and throws `ImmutableModelViolationException`
 - **Mutators** - `setXxxAttribute` methods are not called (no mutation path reaches them)

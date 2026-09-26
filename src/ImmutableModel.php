@@ -27,13 +27,6 @@ abstract class ImmutableModel extends Model
     use UsesReadOnlyConnection;
 
     /**
-     * Disable timestamps auto-updating.
-     *
-     * @var bool
-     */
-    public $timestamps = false;
-
-    /**
      * Allow in-memory fill() of any attribute.
      *
      * Mass-assignment protection guards database writes, and writes always

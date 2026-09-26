@@ -339,7 +339,7 @@ $users = User::fromRows([
 | Dirty tracking | No | Yes |
 | Events/Observers | No | Yes |
 | Mutators | No | Yes |
-| Timestamps | No | Yes |
+| Timestamps | Read as dates; `touch()` throws | Yes |
 | Mass assignment | In memory only | Yes |
 
 ## Performance
@@ -387,7 +387,7 @@ ImmutableModel is ideal for:
 
 - Models that need write operations
 - Models using Eloquent events/observers
-- Models requiring dirty tracking or timestamps
+- Models requiring dirty tracking or automatic timestamp updates
 - Drop-in replacement for all Eloquent models
 
 ## Exceptions

@@ -93,9 +93,9 @@ A phase MUST be complete before the next begins.
 - `$connection = null` means use Laravel's default connection (`config('database.default')`)
 - This mirrors Eloquent's behavior
 
-### Forbidden Model Properties
-- `$fillable`, `$guarded`, `$timestamps`, `$touches`
-- Any persistence-related configuration
+### Persistence-Related Properties
+- `$fillable`, `$guarded`, `$touches` have no effect on the database, because every write throws
+- `$timestamps` keeps Eloquent's default (`true`). On read, it casts `created_at`/`updated_at` to dates, exactly like Eloquent. On write, `touch()` and `save()` throw
 
 ---
 
@@ -309,13 +309,11 @@ Uses Laravel's standard `Illuminate\Database\Eloquent\Scope` interface (inherite
 - No persistence of any kind:
   - `save`, `update`, `delete`, `create`, `insert`, `upsert`, etc.
 - No dirty tracking
-- No timestamps
+- No timestamp writes (`touch()`, automatic timestamps on save)
 - No model events or observers
-- No model boot methods or trait boot hooks
-- No attribute mutators (`setXxxAttribute`)
-- No mass assignment
+- No attribute mutators reach the database (`setXxxAttribute` changes memory only)
 - No silent failure of writes — **ALL write attempts MUST throw**
-- Any inherited or reused Eloquent method that could mutate state MUST be explicitly overridden to throw, even if it is believed to be unreachable.
+- Every write MUST throw, either at `ReadOnlyConnection` (all SQL writes) or through an explicit override on `ImmutableModel`. A method that can return early without running SQL (for example `save()` on a clean model) MUST have an explicit override.
 
 ---
 

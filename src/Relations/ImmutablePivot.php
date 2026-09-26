@@ -19,13 +19,6 @@ class ImmutablePivot extends Pivot
     use UsesReadOnlyConnection;
 
     /**
-     * Disable timestamps auto-updating.
-     *
-     * @var bool
-     */
-    public $timestamps = false;
-
-    /**
      * @throws ImmutableModelViolationException
      */
     public function save(array $options = []): never

@@ -475,9 +475,9 @@ class MechanicalParityTest extends ParityTestCase
      * Test getDates returns timestamp columns.
      *
      * Eloquent's getDates() returns timestamp columns (created_at, updated_at)
-     * when timestamps are enabled. ImmutableModel has $timestamps = false so
-     * it returns an empty array (this is intentional - immutable models don't
-     * auto-update timestamps).
+     * when timestamps are enabled. ImmutableModel keeps $timestamps = true so
+     * timestamp columns are read as dates, exactly like Eloquent. Timestamp
+     * writes still throw (touch(), save()).
      */
     public function test_get_dates_returns_timestamp_columns(): void
     {
@@ -487,13 +487,9 @@ class MechanicalParityTest extends ParityTestCase
         $eloquentDates = $eloquent->getDates();
         $immutableDates = $immutable->getDates();
 
-        // Eloquent with timestamps returns created_at and updated_at
         $this->assertContains('created_at', $eloquentDates);
         $this->assertContains('updated_at', $eloquentDates);
-
-        // ImmutableModel has $timestamps = false, so getDates() returns empty array
-        // This is intentional - immutable models don't use automatic timestamps
-        $this->assertEmpty($immutableDates);
+        $this->assertSame($eloquentDates, $immutableDates);
     }
 
     // =========================================================================
