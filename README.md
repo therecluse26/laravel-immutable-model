@@ -45,8 +45,8 @@ For a hard guarantee, connect with a database user that has read-only permission
 
 - **Enforce architectural boundaries**: Prevent accidental database writes at the model level
 - **Eliminate persistence bugs**: Any save/update/delete attempt throws immediately - no silent failures
-- **Improved performance**: 47-74% faster hydration, 25-70% faster eager loading
-- **Lower memory footprint**: ~41% less memory (~1 KB vs ~1.65 KB per model)
+- **Improved performance**: about 40-60% faster hydration, up to about 30% faster eager loading
+- **Lower memory footprint**: about 22% less memory (~1.3 KB vs ~1.65 KB per model)
 - **Familiar API**: Eloquent-compatible read semantics for easy adoption
 - **Laravel ecosystem compatible**: Works with API Resources, serialization, and other common patterns
 
@@ -346,33 +346,33 @@ $users = User::fromRows([
 
 ## Performance
 
-Benchmarks show ImmutableModel is significantly faster for read operations:
+Benchmarks show ImmutableModel is faster and uses less memory for read operations. Figures are medians of 3 runs of `tests/Benchmarks/HydrationBenchmark.php` (PHP 8.4, Laravel 11.48, SQLite in memory). Run `./vendor/bin/phpunit --testsuite Benchmarks` to measure on your own setup.
 
 ### Hydration Speed
 
 | Rows | Eloquent | ImmutableModel | Improvement |
 |------|----------|----------------|-------------|
-| 100 | 0.30ms | 0.09ms | -70% |
-| 1,000 | 3.09ms | 0.80ms | -74% |
-| 10,000 | 34.27ms | 9.37ms | -73% |
-| 100,000 | 447.29ms | 236.63ms | -47% |
+| 100 | 0.52ms | 0.24ms | -57% |
+| 1,000 | 5.26ms | 2.50ms | -54% |
+| 10,000 | 78.40ms | 30.73ms | -59% |
+| 100,000 | 668.11ms | 413.57ms | -42% |
 
 ### Memory Usage
 
 | Rows | Eloquent | ImmutableModel | Per Model (E) | Per Model (I) | Savings |
 |------|----------|----------------|---------------|---------------|---------|
-| 100 | 166 KB | 97 KB | 1.66 KB | 998 B | 41% |
-| 1,000 | 1.61 MB | 973 KB | 1.65 KB | 996 B | 41% |
-| 10,000 | 16.2 MB | 9.56 MB | 1.66 KB | 1003 B | 41% |
-| 100,000 | 161.5 MB | 95.1 MB | 1.65 KB | 997 B | 41% |
+| 100 | 166 KB | 129 KB | 1.66 KB | 1.29 KB | 22% |
+| 1,000 | 1.61 MB | 1.26 MB | 1.65 KB | 1.29 KB | 22% |
+| 10,000 | 16.2 MB | 12.6 MB | 1.66 KB | 1.29 KB | 22% |
+| 100,000 | 161.5 MB | 125.6 MB | 1.65 KB | 1.29 KB | 22% |
 
 ### Eager Loading (10 posts per user)
 
 | Users | Models | Eloquent | Immutable | Time Δ | Eloquent Mem | Immutable Mem | Mem Δ |
 |-------|--------|----------|-----------|--------|--------------|---------------|-------|
-| 10 | 110 | 1.68ms | 1.27ms | -25% | 184 KB | 105 KB | 43% |
-| 100 | 1,100 | 5.75ms | 2.23ms | -61% | 1.76 MB | 1.02 MB | 42% |
-| 1,000 | 11,000 | 64.22ms | 19.34ms | -70% | 17.53 MB | 10.23 MB | 42% |
+| 10 | 110 | 2.76ms | 2.63ms | -4% | 184 KB | 145 KB | 22% |
+| 100 | 1,100 | 11.42ms | 8.24ms | -29% | 1.76 MB | 1.36 MB | 22% |
+| 1,000 | 11,000 | 99.87ms | 72.30ms | -28% | 17.53 MB | 13.59 MB | 22% |
 
 ## Use Cases
 
