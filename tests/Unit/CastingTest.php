@@ -157,6 +157,10 @@ class CastingTest extends TestCase
 
     public function test_database_query_with_invalid_json_returns_null(): void
     {
+        if ($this->app['db']->connection()->getDriverName() !== 'sqlite') {
+            $this->markTestSkipped('Only SQLite can store invalid JSON in a json column.');
+        }
+
         // Simulate the real-world bug: database contains comma-separated string
         // in a column that's cast as 'array' (JSON)
         $this->app['db']->table('users')->insert([

@@ -311,8 +311,6 @@ class CastingParityTest extends ParityTestCase
     public function test_object_cast_parity(): void
     {
         // Create test table for castable models
-        $this->createTestTable();
-
         $this->app['db']->table('test')->insert([
             'id' => 1,
             'value' => '{"name": "John", "age": 30}',
@@ -335,8 +333,6 @@ class CastingParityTest extends ParityTestCase
 
     public function test_object_cast_nested_parity(): void
     {
-        $this->createTestTable();
-
         $this->app['db']->table('test')->insert([
             'id' => 1,
             'value' => '{"user": {"name": "John", "settings": {"theme": "dark"}}}',
@@ -355,8 +351,6 @@ class CastingParityTest extends ParityTestCase
 
     public function test_object_cast_null_parity(): void
     {
-        $this->createTestTable();
-
         $this->app['db']->table('test')->insert([
             'id' => 1,
             'value' => null,
@@ -378,8 +372,6 @@ class CastingParityTest extends ParityTestCase
 
     public function test_immutable_date_cast_parity(): void
     {
-        $this->createTestTable();
-
         $this->app['db']->table('test')->insert([
             'id' => 1,
             'value' => '2024-06-15',
@@ -408,8 +400,6 @@ class CastingParityTest extends ParityTestCase
 
     public function test_immutable_datetime_cast_parity(): void
     {
-        $this->createTestTable();
-
         $this->app['db']->table('test')->insert([
             'id' => 1,
             'value' => '2024-06-15 14:30:00',
@@ -434,8 +424,6 @@ class CastingParityTest extends ParityTestCase
 
     public function test_immutable_date_null_parity(): void
     {
-        $this->createTestTable();
-
         $this->app['db']->table('test')->insert([
             'id' => 1,
             'value' => null,
@@ -457,8 +445,6 @@ class CastingParityTest extends ParityTestCase
 
     public function test_decimal_cast_parity(): void
     {
-        $this->createTestTable();
-
         $this->app['db']->table('test')->insert([
             'id' => 1,
             'value' => '123.456789',
@@ -476,8 +462,6 @@ class CastingParityTest extends ParityTestCase
 
     public function test_decimal_cast_high_precision_parity(): void
     {
-        $this->createTestTable();
-
         $this->app['db']->table('test')->insert([
             'id' => 1,
             'value' => '99.123456789',
@@ -490,21 +474,5 @@ class CastingParityTest extends ParityTestCase
         $immutable = TestCastableModel::find(1);
 
         $this->assertEquals($eloquent->value, $immutable->value);
-    }
-
-    // =========================================================================
-    // HELPER METHODS
-    // =========================================================================
-
-    /**
-     * Create the test table for TestCastableModel.
-     */
-    protected function createTestTable(): void
-    {
-        $this->app['db']->getSchemaBuilder()->dropIfExists('test');
-        $this->app['db']->getSchemaBuilder()->create('test', function ($table) {
-            $table->increments('id');
-            $table->text('value')->nullable();
-        });
     }
 }

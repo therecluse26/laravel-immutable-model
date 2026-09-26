@@ -276,7 +276,7 @@ class ReadOnlyConnectionTest extends TestCase
         );
 
         $this->assertStringContainsString('Cannot run [update]', $e->getMessage());
-        $this->assertStringContainsString('update "users" set "name" = ?', $e->getMessage());
+        $this->assertMatchesRegularExpression('/SQL: update [`"]users[`"] set [`"]name[`"] = \?/', $e->getMessage());
         $this->assertStringNotContainsString('secret-value-123', $e->getMessage());
     }
 }

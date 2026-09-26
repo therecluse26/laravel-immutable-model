@@ -314,7 +314,7 @@ class QueryBuilderAdvancedTest extends TestCase
             ->select('user_id')
             ->selectRaw('COUNT(*) as post_count')
             ->groupBy('user_id')
-            ->having('post_count', '>', 1)
+            ->havingRaw('COUNT(*) > ?', [1]) // Postgres does not allow the alias in HAVING
             ->get();
 
         $this->assertCount(1, $results);

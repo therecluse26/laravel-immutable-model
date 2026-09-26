@@ -58,12 +58,10 @@ class TraitInitializerParityTest extends ParityTestCase
 
     public function test_table_set_at_runtime_is_kept_on_query_results(): void
     {
-        DB::statement('create view users_view as select * from users');
+        $model = (new ImmutableInitializedUser())->setTable('posts');
+        $post = $model->newQuery()->findOrFail(1);
 
-        $model = (new ImmutableInitializedUser())->setTable('users_view');
-        $user = $model->newQuery()->findOrFail(1);
-
-        $this->assertSame('users_view', $user->getTable());
+        $this->assertSame('posts', $post->getTable());
     }
 
     public function test_initializer_state_does_not_accumulate_across_instances(): void

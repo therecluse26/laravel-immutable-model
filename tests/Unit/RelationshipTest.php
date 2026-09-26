@@ -128,17 +128,14 @@ class RelationshipTest extends TestCase
 
     public function test_belongs_to_returns_null_when_foreign_key_is_null(): void
     {
-        // Insert a comment without a user
-        $this->app['db']->table('comments')->insert([
+        // A comment whose user does not exist. Built in memory, because foreign
+        // keys stop MySQL and Postgres from storing this row.
+        $comment = ImmutableComment::fromRow([
             'id' => 3,
             'post_id' => 1,
             'user_id' => 999, // Non-existent user
             'body' => 'Orphan comment',
-            'created_at' => '2024-01-01 00:00:00',
-            'updated_at' => '2024-01-01 00:00:00',
         ]);
-
-        $comment = ImmutableComment::find(3);
         $this->assertNull($comment->user);
     }
 

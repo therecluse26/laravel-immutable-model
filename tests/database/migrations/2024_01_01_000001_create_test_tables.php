@@ -186,6 +186,12 @@ return new class extends Migration
             $table->softDeletes();
         });
 
+        // Single text column table for custom cast testing (TestCastableModel)
+        Schema::create('test', function (Blueprint $table) {
+            $table->increments('id');
+            $table->text('value')->nullable();
+        });
+
         // Database view for view-backed model testing
         // SQLite supports basic CREATE VIEW
         \Illuminate\Support\Facades\DB::statement('CREATE VIEW user_post_counts AS
@@ -201,6 +207,7 @@ return new class extends Migration
         \Illuminate\Support\Facades\DB::statement('DROP VIEW IF EXISTS user_post_counts');
 
         // Drop edge case tables
+        Schema::dropIfExists('test');
         Schema::dropIfExists('articles');
         Schema::dropIfExists('videos');
         Schema::dropIfExists('order_items');

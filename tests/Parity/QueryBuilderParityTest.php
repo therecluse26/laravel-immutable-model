@@ -531,6 +531,7 @@ class QueryBuilderParityTest extends ParityTestCase
     {
         // Insert duplicate names to test distinct
         $this->app['db']->table('users')->insert([
+            'id' => 100, // Explicit: seeded rows use explicit ids, so Postgres's sequence is still at 1
             'name' => 'Alice',
             'email' => 'alice2@example.com',
             'settings' => null,

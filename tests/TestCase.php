@@ -13,6 +13,15 @@ abstract class TestCase extends BaseTestCase
 {
     use RefreshDatabase;
 
+    /**
+     * Drop views as well as tables when RefreshDatabase runs migrate:fresh.
+     * Without it, a view left by an earlier run on MySQL/Postgres makes
+     * every migration fail.
+     *
+     * @var bool
+     */
+    protected $dropViews = true;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -21,19 +30,39 @@ abstract class TestCase extends BaseTestCase
         ImmutableModel::setConnectionResolver($this->app['db']);
     }
 
+    /**
+     * Register the test migrations with the migrator.
+     *
+     * Only the path is registered, so RefreshDatabase migrates once per run
+     * and wraps each test in a transaction. loadMigrationsFrom() would roll
+     * the migrations back after tests, which rebuilds every table on MySQL
+     * and Postgres and makes the suite take over an hour.
+     */
     protected function defineDatabaseMigrations(): void
     {
-        $this->loadMigrationsFrom(__DIR__ . '/database/migrations');
+        $this->app['migrator']->path(__DIR__ . '/database/migrations');
     }
 
+    /**
+     * Use SQLite in memory by default.
+     *
+     * Set DB_CONNECTION=mysql or DB_CONNECTION=pgsql (plus DB_HOST, DB_PORT,
+     * DB_DATABASE, DB_USERNAME, DB_PASSWORD) to run the suite on another
+     * database. Testbench's default connection configs read those variables.
+     */
     protected function getEnvironmentSetUp($app): void
     {
-        $app['config']->set('database.default', 'sqlite');
-        $app['config']->set('database.connections.sqlite', [
-            'driver' => 'sqlite',
-            'database' => ':memory:',
-            'prefix' => '',
-        ]);
+        $connection = env('DB_CONNECTION', 'sqlite');
+
+        $app['config']->set('database.default', $connection);
+
+        if ($connection === 'sqlite') {
+            $app['config']->set('database.connections.sqlite', [
+                'driver' => 'sqlite',
+                'database' => ':memory:',
+                'prefix' => '',
+            ]);
+        }
     }
 
     /**

@@ -197,10 +197,10 @@ class HydrationTest extends TestCase
             ['id' => 1, 'name' => 'User 1', 'email' => 'user1@example.com'],
         ];
 
-        $users = ImmutableUser::hydrate($items, 'sqlite');
+        $users = ImmutableUser::hydrate($items);
 
         $this->assertCount(1, $users);
-        $this->assertEquals('sqlite', $users[0]->getConnectionName());
+        $this->assertEquals($this->app['config']->get('database.default'), $users[0]->getConnectionName());
     }
 
     // =========================================================================

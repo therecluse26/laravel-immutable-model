@@ -250,18 +250,14 @@ class RelationEdgeCasesTest extends TestCase
 
     public function test_belongs_to_on_model_with_null_foreign_key(): void
     {
-        // Create a post with no user
-        DB::table('posts')->insert([
+        // A post whose user does not exist. Built in memory, because foreign
+        // keys stop MySQL and Postgres from storing this row.
+        $post = ImmutablePost::fromRow([
             'id' => 99,
             'user_id' => 999, // Non-existent user
             'title' => 'Orphan Post',
             'body' => 'Body',
-            'published' => true,
-            'created_at' => now(),
-            'updated_at' => now(),
         ]);
-
-        $post = ImmutablePost::find(99);
         $user = $post->user;
 
         $this->assertNull($user);
