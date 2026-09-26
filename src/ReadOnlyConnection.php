@@ -41,6 +41,7 @@ final class ReadOnlyConnection implements ConnectionInterface
 
     /**
      * @param array<int|string, mixed> $bindings
+     * @param array<int|string, mixed> $bindings
      * @throws ImmutableModelViolationException
      */
     public function insert($query, $bindings = []): never
@@ -49,6 +50,7 @@ final class ReadOnlyConnection implements ConnectionInterface
     }
 
     /**
+     * @param array<int|string, mixed> $bindings
      * @param array<int|string, mixed> $bindings
      * @throws ImmutableModelViolationException
      */
@@ -59,6 +61,7 @@ final class ReadOnlyConnection implements ConnectionInterface
 
     /**
      * @param array<int|string, mixed> $bindings
+     * @param array<int|string, mixed> $bindings
      * @throws ImmutableModelViolationException
      */
     public function delete($query, $bindings = []): never
@@ -68,6 +71,7 @@ final class ReadOnlyConnection implements ConnectionInterface
 
     /**
      * @param array<int|string, mixed> $bindings
+     * @param array<int|string, mixed> $bindings
      * @throws ImmutableModelViolationException
      */
     public function statement($query, $bindings = []): never
@@ -76,6 +80,7 @@ final class ReadOnlyConnection implements ConnectionInterface
     }
 
     /**
+     * @param array<int|string, mixed> $bindings
      * @param array<int|string, mixed> $bindings
      * @throws ImmutableModelViolationException
      */
@@ -127,6 +132,7 @@ final class ReadOnlyConnection implements ConnectionInterface
 
     /**
      * @param array<int|string, mixed> $bindings
+     * @param array<int|string, mixed> $bindings
      */
     public function selectOne($query, $bindings = [], $useReadPdo = true)
     {
@@ -134,6 +140,7 @@ final class ReadOnlyConnection implements ConnectionInterface
     }
 
     /**
+     * @param array<int|string, mixed> $bindings
      * @param array<int|string, mixed> $bindings
      */
     public function scalar($query, $bindings = [], $useReadPdo = true)
@@ -143,7 +150,8 @@ final class ReadOnlyConnection implements ConnectionInterface
 
     /**
      * @param array<int|string, mixed> $bindings
-     * @return array<int, object>
+     * @return array<int, object> object>
+     * @param array<int|string, mixed> $bindings
      */
     public function select($query, $bindings = [], $useReadPdo = true)
     {
@@ -151,6 +159,7 @@ final class ReadOnlyConnection implements ConnectionInterface
     }
 
     /**
+     * @param array<int|string, mixed> $bindings
      * @param array<int|string, mixed> $bindings
      */
     public function cursor($query, $bindings = [], $useReadPdo = true)
@@ -160,7 +169,8 @@ final class ReadOnlyConnection implements ConnectionInterface
 
     /**
      * @param array<int|string, mixed> $bindings
-     * @return array<int|string, mixed>
+     * @return array<int|string, mixed> mixed>
+     * @param array<int|string, mixed> $bindings
      */
     public function prepareBindings(array $bindings)
     {
@@ -212,6 +222,9 @@ final class ReadOnlyConnection implements ConnectionInterface
      * @param Closure(static): mixed $callback
      * @return array<int, array<string, mixed>>
      */
+    /**
+     * @return array<int, array<string, mixed>>
+     */
     public function pretend(Closure $callback)
     {
         return $this->connection->pretend(fn () => $callback($this));
@@ -229,6 +242,7 @@ final class ReadOnlyConnection implements ConnectionInterface
      * @param string $method
      * @param array<int, mixed> $parameters
      * @return mixed
+     * @param array<int, mixed> $parameters
      */
     public function __call($method, $parameters)
     {
