@@ -519,38 +519,6 @@ abstract class ImmutableModel extends Model
         throw ImmutableModelViolationException::persistenceAttempt('decrementQuietly');
     }
 
-    /**
-     * @throws ImmutableModelViolationException
-     */
-    public function fresh($with = []): never
-    {
-        throw ImmutableModelViolationException::persistenceAttempt('fresh');
-    }
-
-    /**
-     * @throws ImmutableModelViolationException
-     */
-    public function refresh(): never
-    {
-        throw ImmutableModelViolationException::persistenceAttempt('refresh');
-    }
-
-    /**
-     * @throws ImmutableModelViolationException
-     */
-    public function replicate(?array $except = null): never
-    {
-        throw ImmutableModelViolationException::persistenceAttempt('replicate');
-    }
-
-    /**
-     * @throws ImmutableModelViolationException
-     */
-    public function replicateQuietly(?array $except = null): never
-    {
-        throw ImmutableModelViolationException::persistenceAttempt('replicateQuietly');
-    }
-
     // =========================================================================
     // PIVOT MODELS
     // =========================================================================

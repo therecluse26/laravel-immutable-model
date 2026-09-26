@@ -12,6 +12,8 @@ ImmutableModel enforces **database immutability**, not strict object immutabilit
 |-----------|----------|---------|
 | Read from database | ✅ Yes | `User::find(1)`, `User::where(...)->get()` |
 | In-memory attribute changes | ✅ Yes | `$user->computed_field = 'value'` |
+| Reload from database | ✅ Yes | `$user->fresh()`, `$user->refresh()` |
+| In-memory copy | ✅ Yes | `$user->replicate()` (the copy cannot be saved) |
 | Database persistence | ❌ Throws | `$user->save()`, `$user->update()`, `$user->delete()` |
 | Static write methods | ❌ Throws | `User::create()`, `User::insert()` |
 
