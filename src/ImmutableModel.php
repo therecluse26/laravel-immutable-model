@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Brighten\ImmutableModel;
 
 use Brighten\ImmutableModel\Concerns\UsesReadOnlyConnection;
+use Brighten\ImmutableModel\Exceptions\ImmutableModelConfigurationException;
 use Brighten\ImmutableModel\Exceptions\ImmutableModelViolationException;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\Eloquent\Builder;
@@ -522,15 +523,24 @@ abstract class ImmutableModel extends Model
      * BelongsToMany asks the related model for its pivot, so returning
      * ImmutablePivot here keeps belongsToMany() pivots immutable.
      *
+     * A custom pivot set with using() must extend ImmutablePivot. A pivot
+     * model has its own connection, so any other class could write.
+     *
      * @param Model $parent
      * @param array $attributes
      * @param string $table
      * @param bool $exists
      * @param string|null $using
      * @return \Illuminate\Database\Eloquent\Relations\Pivot
+     *
+     * @throws ImmutableModelConfigurationException
      */
     public function newPivot(Model $parent, array $attributes, $table, $exists, $using = null)
     {
+        if ($using && ! is_a($using, Relations\ImmutablePivot::class, true)) {
+            throw ImmutableModelConfigurationException::mutablePivot($using, Relations\ImmutablePivot::class);
+        }
+
         return $using
             ? $using::fromRawAttributes($parent, $attributes, $table, $exists)
             : Relations\ImmutablePivot::fromAttributes($parent, $attributes, $table, $exists);

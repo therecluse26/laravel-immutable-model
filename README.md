@@ -28,14 +28,16 @@ ImmutableModel is a guardrail in application code. It is not a database permissi
 - Model methods: `save()`, `update()`, `delete()`, `touch()`, `increment()`, ...
 - Builder methods: `User::query()->update()`, `upsert()`, `truncate()`, `insertOrIgnoreUsing()`, ...
 - Lower-level builders: `User::query()->toBase()->update()`, `->getQuery()->delete()`
-- Relations and pivots: `$post->comments()->create()`, `$post->tags()->attach()`, `sync()`, `updateExistingPivot()`, ...
+- Relations to immutable models, and their pivots: `$post->comments()->create()`, `$post->tags()->attach()`, `sync()`, `updateExistingPivot()`, ...
 - Write methods that future Laravel versions add, because they use the same connection
 
 **Not blocked:**
 
 - `$model->getConnection()` returns the real connection. `$model->getConnection()->table('users')->update(...)` writes.
 - The `DB` facade and ordinary Eloquent models on the same table.
-- A custom pivot class set with `->using(MyPivot::class)` that extends plain `Pivot`. Extend `ImmutablePivot` instead.
+- Relations to ordinary (mutable) Eloquent models. `$immutablePost->comments()->create(...)` writes if `Comment` is a normal Eloquent model.
+
+**Custom pivots:** a pivot class set with `->using(MyPivot::class)` must extend `ImmutablePivot` (or `ImmutableMorphPivot` for `morphToMany()`). Any other pivot class throws `ImmutableModelConfigurationException` when the relation loads.
 
 For a hard guarantee, connect with a database user that has read-only permissions.
 
@@ -395,7 +397,7 @@ ImmutableModel is ideal for:
 | Exception | When Thrown |
 |-----------|-------------|
 | `ImmutableModelViolationException` | Any database write attempt (save, update, delete, create, attach, etc.). Blocked SQL is shown with `?` placeholders; binding values are never included. |
-| `ImmutableModelConfigurationException` | Invalid model configuration |
+| `ImmutableModelConfigurationException` | Invalid configuration: a custom pivot class that does not extend `ImmutablePivot` / `ImmutableMorphPivot` |
 
 ## Contributing
 

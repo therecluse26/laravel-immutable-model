@@ -93,6 +93,44 @@ class ImmutablePost extends ImmutableModel
     /**
      * Get the post's tags via polymorphic relation (MorphToMany via taggables).
      */
+    /**
+     * Tags through a custom immutable pivot class.
+     */
+    public function tagsWithCustomPivot(): BelongsToMany
+    {
+        return $this->belongsToMany(ImmutableTag::class, 'post_tag', 'post_id', 'tag_id')
+            ->using(Pivots\CustomImmutablePivot::class)
+            ->withPivot('order');
+    }
+
+    /**
+     * Tags through a mutable pivot class. Loading this relation must throw.
+     */
+    public function tagsWithMutablePivot(): BelongsToMany
+    {
+        return $this->belongsToMany(ImmutableTag::class, 'post_tag', 'post_id', 'tag_id')
+            ->using(Pivots\CustomMutablePivot::class)
+            ->withPivot('order');
+    }
+
+    /**
+     * Morph tags through a custom immutable morph pivot class.
+     */
+    public function morphTagsWithCustomPivot(): ImmutableMorphToMany
+    {
+        return $this->morphToMany(ImmutableTag::class, 'taggable', 'taggables', null, 'tag_id')
+            ->using(Pivots\CustomImmutableMorphPivot::class);
+    }
+
+    /**
+     * Morph tags through a mutable morph pivot class. Loading this relation must throw.
+     */
+    public function morphTagsWithMutablePivot(): ImmutableMorphToMany
+    {
+        return $this->morphToMany(ImmutableTag::class, 'taggable', 'taggables', null, 'tag_id')
+            ->using(Pivots\CustomMutableMorphPivot::class);
+    }
+
     public function morphTags(): ImmutableMorphToMany
     {
         // Explicitly specify 'tag_id' since Eloquent would derive 'immutable_tag_id' from class name

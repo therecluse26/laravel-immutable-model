@@ -174,8 +174,7 @@ throw ImmutableModelViolationException::persistenceAttempt($method);
 throw ImmutableModelViolationException::writeAttempt($operation, $sql); // ReadOnlyConnection only; never include bindings
 
 // Configuration errors
-throw ImmutableModelConfigurationException::missingPrimaryKey($class);
-throw ImmutableModelConfigurationException::forbiddenProperty($property);
+throw ImmutableModelConfigurationException::mutablePivot($pivotClass, $requiredParent); // using() a pivot that is not immutable
 ```
 
 ## Quick Reference

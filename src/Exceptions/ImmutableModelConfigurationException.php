@@ -10,52 +10,17 @@ use RuntimeException;
  * Thrown when an immutable model is misconfigured.
  *
  * This exception indicates a configuration error such as:
- * - Using identity operations on a model without a primary key
- * - Using forbidden model properties
- * - Invalid cast configuration
+ * - A relation that uses a pivot class which is not immutable
  */
 class ImmutableModelConfigurationException extends RuntimeException
 {
     /**
-     * Create exception for missing primary key.
+     * Create exception for a mutable custom pivot class set with using().
      */
-    public static function missingPrimaryKey(string $operation): self
-    {
-        return new self("Cannot perform [{$operation}] on a model without a primary key.");
-    }
-
-    /**
-     * Create exception for forbidden property usage.
-     */
-    public static function forbiddenProperty(string $property): self
-    {
-        return new self("Property [{$property}] is forbidden on immutable models.");
-    }
-
-    /**
-     * Create exception for invalid cast configuration.
-     */
-    public static function invalidCast(string $key, string $reason): self
-    {
-        return new self("Invalid cast configuration for [{$key}]: {$reason}");
-    }
-
-    /**
-     * Create exception for missing table configuration.
-     */
-    public static function missingTable(string $class): self
-    {
-        return new self("Immutable model [{$class}] must define a \$table property.");
-    }
-
-    /**
-     * Create exception for missing connection resolver.
-     */
-    public static function missingConnectionResolver(): self
+    public static function mutablePivot(string $pivotClass, string $requiredParent): self
     {
         return new self(
-            'No database connection resolver has been configured. '
-            . 'Ensure Laravel has booted or call ImmutableModel::setConnectionResolver().'
+            "Pivot class [{$pivotClass}] must extend [{$requiredParent}] to be used by an immutable relation."
         );
     }
 }

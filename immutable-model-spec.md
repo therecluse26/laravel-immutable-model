@@ -324,7 +324,7 @@ Uses Laravel's standard `Illuminate\Database\Eloquent\Scope` interface (inherite
 
 Rules:
 - Mutation attempts → `ImmutableModelViolationException`
-- Invalid model configuration (PK misuse, forbidden properties, forbidden API use) → `ImmutableModelConfigurationException`
+- Invalid configuration (a custom `using()` pivot that does not extend `ImmutablePivot` / `ImmutableMorphPivot`) → `ImmutableModelConfigurationException`
 
 ---
 
