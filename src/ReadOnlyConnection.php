@@ -6,6 +6,7 @@ namespace Brighten\ImmutableModel;
 
 use Brighten\ImmutableModel\Exceptions\ImmutableModelViolationException;
 use Closure;
+use Illuminate\Database\Connection;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 
@@ -22,14 +23,14 @@ use Illuminate\Database\Query\Builder as QueryBuilder;
 final class ReadOnlyConnection implements ConnectionInterface
 {
     public function __construct(
-        private readonly ConnectionInterface $connection
+        private readonly Connection $connection
     ) {
     }
 
     /**
      * Get the wrapped connection.
      */
-    public function getWrappedConnection(): ConnectionInterface
+    public function getWrappedConnection(): Connection
     {
         return $this->connection;
     }
@@ -39,6 +40,7 @@ final class ReadOnlyConnection implements ConnectionInterface
     // =========================================================================
 
     /**
+     * @param array<int|string, mixed> $bindings
      * @throws ImmutableModelViolationException
      */
     public function insert($query, $bindings = []): never
@@ -47,6 +49,7 @@ final class ReadOnlyConnection implements ConnectionInterface
     }
 
     /**
+     * @param array<int|string, mixed> $bindings
      * @throws ImmutableModelViolationException
      */
     public function update($query, $bindings = []): never
@@ -55,6 +58,7 @@ final class ReadOnlyConnection implements ConnectionInterface
     }
 
     /**
+     * @param array<int|string, mixed> $bindings
      * @throws ImmutableModelViolationException
      */
     public function delete($query, $bindings = []): never
@@ -63,6 +67,7 @@ final class ReadOnlyConnection implements ConnectionInterface
     }
 
     /**
+     * @param array<int|string, mixed> $bindings
      * @throws ImmutableModelViolationException
      */
     public function statement($query, $bindings = []): never
@@ -71,6 +76,7 @@ final class ReadOnlyConnection implements ConnectionInterface
     }
 
     /**
+     * @param array<int|string, mixed> $bindings
      * @throws ImmutableModelViolationException
      */
     public function affectingStatement($query, $bindings = []): never
@@ -119,34 +125,63 @@ final class ReadOnlyConnection implements ConnectionInterface
         return $this->connection->raw($value);
     }
 
+    /**
+     * @param array<int|string, mixed> $bindings
+     */
     public function selectOne($query, $bindings = [], $useReadPdo = true)
     {
         return $this->connection->selectOne($query, $bindings, $useReadPdo);
     }
 
+    /**
+     * @param array<int|string, mixed> $bindings
+     */
     public function scalar($query, $bindings = [], $useReadPdo = true)
     {
         return $this->connection->scalar($query, $bindings, $useReadPdo);
     }
 
+    /**
+     * @param array<int|string, mixed> $bindings
+     * @return array<int, object>
+     */
     public function select($query, $bindings = [], $useReadPdo = true)
     {
         return $this->connection->select($query, $bindings, $useReadPdo);
     }
 
+    /**
+     * @param array<int|string, mixed> $bindings
+     */
     public function cursor($query, $bindings = [], $useReadPdo = true)
     {
         return $this->connection->cursor($query, $bindings, $useReadPdo);
     }
 
+    /**
+     * @param array<int|string, mixed> $bindings
+     * @return array<int|string, mixed>
+     */
     public function prepareBindings(array $bindings)
     {
         return $this->connection->prepareBindings($bindings);
     }
 
+    /**
+     * Run a transaction on the wrapped connection.
+     *
+     * The callback receives this read-only connection, not the wrapped one,
+     * so writes inside the transaction still throw.
+     *
+     * @template TReturn
+     *
+     * @param Closure(static): TReturn $callback
+     * @param int $attempts
+     * @return TReturn
+     */
     public function transaction(Closure $callback, $attempts = 1)
     {
-        return $this->connection->transaction($callback, $attempts);
+        return $this->connection->transaction(fn () => $callback($this), $attempts);
     }
 
     public function beginTransaction()
@@ -169,9 +204,17 @@ final class ReadOnlyConnection implements ConnectionInterface
         return $this->connection->transactionLevel();
     }
 
+    /**
+     * Run the callback in "pretend" mode on the wrapped connection.
+     *
+     * The callback receives this read-only connection, not the wrapped one.
+     *
+     * @param Closure(static): mixed $callback
+     * @return array<int, array<string, mixed>>
+     */
     public function pretend(Closure $callback)
     {
-        return $this->connection->pretend($callback);
+        return $this->connection->pretend(fn () => $callback($this));
     }
 
     public function getDatabaseName()
@@ -184,7 +227,7 @@ final class ReadOnlyConnection implements ConnectionInterface
      * to the wrapped connection.
      *
      * @param string $method
-     * @param array $parameters
+     * @param array<int, mixed> $parameters
      * @return mixed
      */
     public function __call($method, $parameters)

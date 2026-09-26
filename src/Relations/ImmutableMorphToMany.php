@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Brighten\ImmutableModel\Relations;
 
 use Brighten\ImmutableModel\Exceptions\ImmutableModelConfigurationException;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphToMany;
 
 /**
@@ -13,6 +14,11 @@ use Illuminate\Database\Eloquent\Relations\MorphToMany;
  * Writes are blocked by ReadOnlyConnection like every other relation.
  * This class exists only because Laravel's MorphToMany::newPivot()
  * hard-codes MorphPivot instead of asking the related model.
+ *
+ * @template TRelatedModel of Model
+ * @template TDeclaringModel of Model
+ *
+ * @extends MorphToMany<TRelatedModel, TDeclaringModel>
  */
 class ImmutableMorphToMany extends MorphToMany
 {
@@ -23,9 +29,9 @@ class ImmutableMorphToMany extends MorphToMany
      * A custom pivot class must extend ImmutableMorphPivot.
      * Delegates to Laravel's implementation so its pivot setup stays in sync.
      *
-     * @param array $attributes
+     * @param array<string, mixed> $attributes
      * @param bool $exists
-     * @return \Illuminate\Database\Eloquent\Relations\MorphPivot
+     * @return \Illuminate\Database\Eloquent\Relations\Pivot
      *
      * @throws ImmutableModelConfigurationException
      */
@@ -39,12 +45,13 @@ class ImmutableMorphToMany extends MorphToMany
             return parent::newPivot($attributes, $exists);
         }
 
+        $previous = $this->using;
         $this->using = ImmutableMorphPivot::class;
 
         try {
             return parent::newPivot($attributes, $exists);
         } finally {
-            $this->using = null;
+            $this->using = $previous;
         }
     }
 }

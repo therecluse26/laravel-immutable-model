@@ -134,6 +134,12 @@ Note: These methods exist (inherited from Eloquent) but are overridden to be saf
 ./vendor/bin/phpunit
 ```
 
+### Static Analysis
+```bash
+./vendor/bin/phpstan analyse   # Larastan, level 6, src/ only (phpstan.neon.dist)
+```
+Fix the cause of each error. Do not add ignore comments or a baseline.
+
 ### Run Specific Suite
 ```bash
 ./vendor/bin/phpunit --testsuite Unit

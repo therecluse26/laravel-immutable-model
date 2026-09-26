@@ -148,6 +148,9 @@ class ReadOnlyConnectionTest extends TestCase
             'relation toBase()->delete()' => [fn () => ImmutableUser::findOrFail(1)->posts()->toBase()->delete()],
             'incrementEach()' => [fn () => ImmutablePost::query()->incrementEach(['user_id' => 1])],
             'builder getConnection()->table()' => [fn () => ImmutableUser::query()->getConnection()->table('users')->update(['name' => 'x'])],
+            'transaction callback connection' => [fn () => ImmutableUser::query()->getConnection()->transaction(
+                fn ($connection) => $connection->table('users')->update(['name' => 'x'])
+            )],
         ];
     }
 
