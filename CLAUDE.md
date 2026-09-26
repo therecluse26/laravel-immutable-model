@@ -27,6 +27,8 @@ These constraints are absolute and must never be violated:
 | `src/ImmutableModel.php` | Abstract base class extending Eloquent\Model with persistence blocked |
 | `src/ReadOnlyConnection.php` | Connection wrapper: the 6 SQL write methods throw, everything else delegates |
 | `src/Concerns/UsesReadOnlyConnection.php` | Trait: `newBaseQueryBuilder()` binds every model query to `ReadOnlyConnection` |
+| `src/Concerns/SerializesDatesNatively.php` | Trait: `serializeDate()` with PHP's native formatter; same output as Eloquent, ~3x faster `toArray()` |
+| `benchmarks/read-benchmark.php` | Standalone Eloquent vs ImmutableModel benchmark on a real database |
 | `src/Relations/ImmutablePivot.php` | Immutable pivot model for BelongsToMany (returned by `ImmutableModel::newPivot()`) |
 | `src/Relations/ImmutableMorphPivot.php` | Immutable pivot model for MorphToMany |
 | `src/Relations/ImmutableMorphToMany.php` | Only overrides `newPivot()`, because Laravel hard-codes `MorphPivot` there |
@@ -44,6 +46,7 @@ The package extends `Eloquent\Model` and enforces immutability through method ov
 // ImmutableModel extends Eloquent\Model
 abstract class ImmutableModel extends Model
 {
+    use SerializesDatesNatively; // Fast toArray() date output, identical to Eloquent
     use UsesReadOnlyConnection;  // Every SQL write throws at the connection
 
     // Override persistence methods to throw
@@ -139,6 +142,13 @@ Note: These methods exist (inherited from Eloquent) but are overridden to be saf
 ./vendor/bin/phpstan analyse   # Larastan, level 6, src/ only (phpstan.neon.dist)
 ```
 Fix the cause of each error. Do not add ignore comments or a baseline.
+
+### Benchmarks
+```bash
+DB_PORT=33062 php benchmarks/read-benchmark.php seed   # once, needs MySQL (see README "Run it yourself")
+DB_PORT=33062 composer bench                           # Eloquent vs ImmutableModel on a real database
+```
+Performance is the main goal of this package. Measure every optimization on a real database with an A/B run before keeping it. SPX and other instrumenting profilers overstate small functions that are called very often (a `getCasts()` cache looked like 12% in SPX and gained nothing).
 
 ### Run Specific Suite
 ```bash

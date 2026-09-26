@@ -31,7 +31,8 @@
     },
     "scripts": {
         "test": "phpunit",
-        "analyse": "phpstan analyse"
+        "analyse": "phpstan analyse",
+        "bench": "php -d opcache.enable_cli=1 -d memory_limit=-1 benchmarks/read-benchmark.php"
     },
     "minimum-stability": "stable",
     "prefer-stable": true,

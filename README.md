@@ -45,8 +45,8 @@ For a hard guarantee, connect with a database user that has read-only permission
 
 - **Enforce architectural boundaries**: Prevent accidental database writes at the model level
 - **Eliminate persistence bugs**: Any save/update/delete attempt throws immediately - no silent failures
-- **Improved performance**: about 40-60% faster hydration, up to about 30% faster eager loading
-- **Lower memory footprint**: about 22% less memory (~1.3 KB vs ~1.65 KB per model)
+- **Improved performance**: `get()` + `toArray()` about 60-65% faster than Eloquent on MySQL, eager loading up to about 20% faster
+- **Lower memory footprint**: about 22% less memory (~1.35 KB vs ~1.73 KB per model)
 - **Familiar API**: Eloquent-compatible read semantics for easy adoption
 - **Laravel ecosystem compatible**: Works with API Resources, serialization, and other common patterns
 
@@ -346,33 +346,54 @@ $users = User::fromRows([
 
 ## Performance
 
-Benchmarks show ImmutableModel is faster and uses less memory for read operations. Figures are medians of 3 runs of `tests/Benchmarks/HydrationBenchmark.php` (PHP 8.4, Laravel 11.48, SQLite in memory). Run `./vendor/bin/phpunit --testsuite Benchmarks` to measure on your own setup.
+Measured with `benchmarks/read-benchmark.php` on MySQL 8.4 (Docker, same machine), PHP 8.4 with OPcache on and JIT off. The test model has a JSON cast, a datetime cast and two timestamps. Times are medians in milliseconds.
 
-### Hydration Speed
+### Where the speed comes from
 
-| Rows | Eloquent | ImmutableModel | Improvement |
-|------|----------|----------------|-------------|
-| 100 | 0.52ms | 0.24ms | -57% |
-| 1,000 | 5.26ms | 2.50ms | -54% |
-| 10,000 | 78.40ms | 30.73ms | -59% |
-| 100,000 | 668.11ms | 413.57ms | -42% |
+- **Serialization:** `toArray()` / JSON output is where most read time goes. Eloquent formats every date through Carbon's `isoFormat()`. ImmutableModel produces the identical string with PHP's native formatter.
+- **Hydration:** ImmutableModel builds models without Eloquent's constructor work, such as copying every attribute into `$original`. This also saves memory.
 
-### Memory Usage
+### Query and serialize (`get()->toArray()`)
 
-| Rows | Eloquent | ImmutableModel | Per Model (E) | Per Model (I) | Savings |
-|------|----------|----------------|---------------|---------------|---------|
-| 100 | 166 KB | 129 KB | 1.66 KB | 1.29 KB | 22% |
-| 1,000 | 1.61 MB | 1.26 MB | 1.65 KB | 1.29 KB | 22% |
-| 10,000 | 16.2 MB | 12.6 MB | 1.66 KB | 1.29 KB | 22% |
-| 100,000 | 161.5 MB | 125.6 MB | 1.65 KB | 1.29 KB | 22% |
+| Rows | Eloquent | ImmutableModel | Change |
+|------|----------|----------------|--------|
+| 100 | 6.91 | 2.70 | -61% |
+| 1,000 | 74.56 | 26.15 | -65% |
+| 10,000 | 761.71 | 274.64 | -64% |
 
-### Eager Loading (10 posts per user)
+### Separate steps
 
-| Users | Models | Eloquent | Immutable | Time Δ | Eloquent Mem | Immutable Mem | Mem Δ |
-|-------|--------|----------|-----------|--------|--------------|---------------|-------|
-| 10 | 110 | 2.76ms | 2.63ms | -4% | 184 KB | 145 KB | 22% |
-| 100 | 1,100 | 11.42ms | 8.24ms | -29% | 1.76 MB | 1.36 MB | 22% |
-| 1,000 | 11,000 | 99.87ms | 72.30ms | -28% | 17.53 MB | 13.59 MB | 22% |
+| Rows | Hydration: Eloquent | Hydration: ImmutableModel | `toArray()`: Eloquent | `toArray()`: ImmutableModel |
+|------|------|------|------|------|
+| 100 | 0.25 | 0.04 | 6.30 | 2.30 |
+| 1,000 | 3.04 | 0.78 | 69.52 | 23.38 |
+| 10,000 | 36.26 | 18.41 | 706.32 | 237.08 |
+
+Hydration is the time of `Model::query()->get()` minus `DB::table()->get()` for the same rows.
+
+### Eager loading (10 posts per user)
+
+| Users | Eloquent | ImmutableModel | Change |
+|-------|----------|----------------|--------|
+| 10 | 1.03 | 1.07 | within noise |
+| 100 | 8.43 | 7.48 | -11% |
+| 1,000 | 91.67 | 71.08 | -22% |
+
+### Memory (10,000 hydrated models)
+
+| Eloquent | ImmutableModel | Change |
+|----------|----------------|--------|
+| 16.50 MB (1,730 bytes per model) | 12.92 MB (1,354 bytes per model) | -22% |
+
+### Run it yourself
+
+```bash
+docker run -d --name bench-mysql -e MYSQL_ROOT_PASSWORD=secret -e MYSQL_DATABASE=bench -p 33062:3306 mysql:8.4
+DB_PORT=33062 php benchmarks/read-benchmark.php seed
+DB_PORT=33062 composer bench
+```
+
+The database runs on the same machine, so there is no network delay. Over a network, each query takes longer by a fixed amount, which lowers the percentage gain of `get()`. The absolute time saved stays the same.
 
 ## Use Cases
 
