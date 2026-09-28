@@ -142,20 +142,27 @@ final class ReadOnlyConnection implements ConnectionInterface
     }
 
     /**
+     * Laravel 13 added $fetchUsing. The arguments are forwarded with
+     * func_get_args() because Laravel 11 and 12 take only three.
+     *
      * @param array<int|string, mixed> $bindings
+     * @param array<int, mixed> $fetchUsing
      * @return array<int, object>
      */
-    public function select($query, $bindings = [], $useReadPdo = true)
+    public function select($query, $bindings = [], $useReadPdo = true, array $fetchUsing = [])
     {
-        return $this->connection->select($query, $bindings, $useReadPdo);
+        return $this->connection->select(...func_get_args());
     }
 
     /**
+     * Laravel 13 added $fetchUsing. See select().
+     *
      * @param array<int|string, mixed> $bindings
+     * @param array<int, mixed> $fetchUsing
      */
-    public function cursor($query, $bindings = [], $useReadPdo = true)
+    public function cursor($query, $bindings = [], $useReadPdo = true, array $fetchUsing = [])
     {
-        return $this->connection->cursor($query, $bindings, $useReadPdo);
+        return $this->connection->cursor(...func_get_args());
     }
 
     /**

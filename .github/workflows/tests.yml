@@ -13,8 +13,12 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        php: [8.2, 8.3, 8.4]
-        laravel: [11, 12]
+        php: [8.2, 8.3, 8.4, 8.5]
+        laravel: [11, 12, 13]
+        exclude:
+          # Laravel 13 needs PHP 8.3 or later.
+          - php: 8.2
+            laravel: 13
 
     name: PHP ${{ matrix.php }} - Laravel ${{ matrix.laravel }}
 
@@ -40,7 +44,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        laravel: [11, 12]
+        laravel: [11, 12, 13]
         db: [mysql, pgsql]
 
     name: ${{ matrix.db }} - Laravel ${{ matrix.laravel }}
@@ -88,7 +92,13 @@ jobs:
 
   static-analysis:
     runs-on: ubuntu-latest
-    name: PHPStan
+    strategy:
+      fail-fast: false
+      matrix:
+        # Each Laravel version has its own signatures, so PHPStan runs on each.
+        laravel: [11, 12, 13]
+
+    name: PHPStan - Laravel ${{ matrix.laravel }}
 
     steps:
       - uses: actions/checkout@v4
@@ -100,7 +110,9 @@ jobs:
           coverage: none
 
       - name: Install dependencies
-        run: composer update --prefer-dist --no-progress
+        run: |
+          composer require "illuminate/database:^${{ matrix.laravel }}.0" "illuminate/support:^${{ matrix.laravel }}.0" --no-interaction --no-update
+          composer update --prefer-dist --no-progress
 
       - name: Run PHPStan
         run: vendor/bin/phpstan analyse --no-progress
