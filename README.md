@@ -28,7 +28,8 @@ ImmutableModel is a guardrail in application code. It is not a database permissi
 - Model methods: `save()`, `update()`, `delete()`, `touch()`, `increment()`, ...
 - Builder methods: `User::query()->update()`, `upsert()`, `truncate()`, `insertOrIgnoreUsing()`, ...
 - Lower-level builders: `User::query()->toBase()->update()`, `->getQuery()->delete()`
-- Relations to immutable models, and their pivots: `$post->comments()->create()`, `$post->tags()->attach()`, `sync()`, `updateExistingPivot()`, ...
+- Relations to immutable models: `$post->comments()->create()`, `$post->tags()->attach()`, `sync()`, `updateExistingPivot()`, ...
+- Pivot models of `belongsToMany()` to an immutable model, and of `morphToMany()` / `morphedByMany()` on an immutable model: `$tag->pivot->save()`, `$tag->pivot->delete()`
 - Write methods that future Laravel versions add, because they use the same connection
 
 **Not blocked:**
@@ -36,8 +37,11 @@ ImmutableModel is a guardrail in application code. It is not a database permissi
 - `$model->getConnection()` returns the real connection. `$model->getConnection()->table('users')->update(...)` writes.
 - The `DB` facade and ordinary Eloquent models on the same table.
 - Relations to ordinary (mutable) Eloquent models. `$immutablePost->comments()->create(...)` writes if `Comment` is a normal Eloquent model.
+- The pivot model of `morphToMany()` / `morphedByMany()` declared on an ordinary Eloquent model, even when the related model is immutable. Laravel builds that pivot from the parent model, so it is a plain `MorphPivot` on the real connection. Add `->using(ImmutableMorphPivot::class)` to the relation to block it. Queries through the relation, such as `attach()` and `detach()`, are still blocked.
 
-**Custom pivots:** a pivot class set with `->using(MyPivot::class)` must extend `ImmutablePivot` (or `ImmutableMorphPivot` for `morphToMany()`). Any other pivot class throws `ImmutableModelConfigurationException` when the relation loads.
+**Custom pivots:** on an immutable model, a pivot class set with `->using(MyPivot::class)` must extend `ImmutablePivot` (or `ImmutableMorphPivot` for `morphToMany()`). Any other pivot class throws `ImmutableModelConfigurationException` when the relation loads.
+
+**Pivot models are stricter than models:** `ImmutablePivot` and `ImmutableMorphPivot` also reject in-memory changes. `$tag->pivot->order = 5` and `$tag->pivot['order'] = 5` throw `ImmutableModelViolationException`.
 
 For a hard guarantee, connect with a database user that has read-only permissions.
 
@@ -45,7 +49,7 @@ For a hard guarantee, connect with a database user that has read-only permission
 
 - **Enforce architectural boundaries**: Prevent accidental database writes at the model level
 - **Eliminate persistence bugs**: Any save/update/delete attempt throws immediately - no silent failures
-- **Improved performance**: `get()` + `toArray()` about 60-65% faster than Eloquent on MySQL, eager loading up to about 20% faster
+- **Improved performance**: `get()` + `toArray()` takes 61-65% less time than Eloquent on MySQL (about 2.8x faster), eager loading up to about 20% faster
 - **Lower memory footprint**: about 22% less memory (~1.35 KB vs ~1.73 KB per model)
 - **Familiar API**: Eloquent-compatible read semantics for easy adoption
 - **Laravel ecosystem compatible**: Works with API Resources, serialization, and other common patterns
@@ -58,8 +62,8 @@ composer require brighten/immutable-model
 
 ## Requirements
 
-- PHP 8.2+
-- Laravel 11+
+- PHP 8.2+ (8.3+ for Laravel 13)
+- Laravel 11, 12 or 13
 
 ## Quick Start
 
@@ -164,7 +168,7 @@ MyModel::max('views');
 
 ### Relationships
 
-Supported relationship types:
+Every Eloquent relationship type works: `belongsTo()`, `hasOne()`, `hasMany()`, `hasOneThrough()`, `hasManyThrough()`, `belongsToMany()`, `morphOne()`, `morphMany()`, `morphTo()`, `morphToMany()` and `morphedByMany()`. The related model can be immutable or an ordinary Eloquent model.
 
 ```php
 class Post extends ImmutableModel
@@ -201,6 +205,17 @@ $author = $post->author;
 $comments = $post->comments()->where('approved', true)->get();
 ```
 
+#### Default foreign keys
+
+ImmutableModel removes an `Immutable` prefix from the class name when it builds a default foreign key. This lets a read model named after its mutable twin use the same schema:
+
+| Class | Eloquent default | ImmutableModel default |
+|-------|------------------|------------------------|
+| `ImmutableUser` (table `users`) | `immutable_user_id` | `user_id` |
+| `UserView` | `user_view_id` | `user_view_id` |
+
+This applies where Eloquent calls `getForeignKey()`: `hasOne()`, `hasMany()`, the `*Through()` relations, and the pivot keys of `belongsToMany()`, `morphToMany()` and `morphedByMany()`. `belongsTo()` is not affected, because Eloquent builds that key from the relation method name. The default pivot table name keeps the prefix. If your columns really are named `immutable_user_id`, pass the key to the relation explicitly.
+
 ### Casting
 
 Full Eloquent casting support:
@@ -229,7 +244,7 @@ protected $casts = [
 ];
 ```
 
-Custom casters must implement `Illuminate\Contracts\Database\Eloquent\CastsAttributes`. Only the `get()` method is called.
+Custom casters implement `Illuminate\Contracts\Database\Eloquent\CastsAttributes` as usual. Reads call `get()`. An in-memory assignment such as `$model->address = $value` calls `set()`, like Eloquent. Nothing is written to the database.
 
 ### Collections
 
@@ -339,8 +354,8 @@ $users = User::fromRows([
 | Global scopes | Yes | Yes |
 | Write operations | **Throws** | Yes |
 | Dirty tracking | No | Yes |
-| Events/Observers | No | Yes |
-| Mutators | No | Yes |
+| Events/Observers | No (`observe()` and event listeners are ignored) | Yes |
+| Mutators | In memory only | Yes |
 | Timestamps | Read as dates; `touch()` throws | Yes |
 | Mass assignment | In memory only | Yes |
 
