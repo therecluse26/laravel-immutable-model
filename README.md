@@ -216,6 +216,37 @@ ImmutableModel removes an `Immutable` prefix from the class name when it builds 
 
 This applies where Eloquent calls `getForeignKey()`: `hasOne()`, `hasMany()`, the `*Through()` relations, and the pivot keys of `belongsToMany()`, `morphToMany()` and `morphedByMany()`. `belongsTo()` is not affected, because Eloquent builds that key from the relation method name. The default pivot table name keeps the prefix. If your columns really are named `immutable_user_id`, pass the key to the relation explicitly.
 
+#### Mixing immutable and Eloquent models
+
+A model is writable or not because of its class, not because of how you loaded it. An ordinary Eloquent model stays writable when you reach it through an immutable model, and an immutable model stays read-only when you reach it through an Eloquent model:
+
+```php
+$post = ImmutablePost::find(1);
+
+$post->meta->first()->save();       // Writes: PostMeta is an ordinary Eloquent model
+$post->meta()->create([...]);       // Writes, for the same reason
+
+$category = Category::find(1);      // Ordinary Eloquent model
+$category->posts->first()->save();  // Throws: ImmutablePost is immutable
+```
+
+To make the related side read-only too, point the relation at an immutable model for the same table:
+
+```php
+class ImmutablePostMeta extends ImmutableModel
+{
+    protected $table = 'post_meta';
+}
+
+class ImmutablePost extends ImmutableModel
+{
+    public function meta(): HasMany
+    {
+        return $this->hasMany(ImmutablePostMeta::class); // post_id, see "Default foreign keys"
+    }
+}
+```
+
 ### Casting
 
 Full Eloquent casting support:
