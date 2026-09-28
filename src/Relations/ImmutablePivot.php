@@ -61,7 +61,7 @@ class ImmutablePivot extends Pivot
      */
     public function offsetSet($offset, $value): void
     {
-        throw ImmutableModelViolationException::attributeMutation($offset ?? 'unknown');
+        throw ImmutableModelViolationException::attributeMutation((string) ($offset ?? 'unknown'));
     }
 
     /**
@@ -71,6 +71,6 @@ class ImmutablePivot extends Pivot
      */
     public function offsetUnset($offset): void
     {
-        throw ImmutableModelViolationException::attributeMutation($offset);
+        throw ImmutableModelViolationException::attributeMutation((string) $offset);
     }
 }

@@ -501,4 +501,28 @@ class RelationMutationBlockingTest extends TestCase
         $this->expectException(ImmutableModelViolationException::class);
         unset($pivot['order']);
     }
+
+    public function test_pivot_integer_offset_mutation_blocked(): void
+    {
+        $pivot = $this->post->tags->first()->pivot;
+
+        $this->expectException(ImmutableModelViolationException::class);
+        $pivot[0] = 99;
+    }
+
+    public function test_pivot_append_blocked(): void
+    {
+        $pivot = $this->post->tags->first()->pivot;
+
+        $this->expectException(ImmutableModelViolationException::class);
+        $pivot[] = 99;
+    }
+
+    public function test_pivot_integer_offset_unset_blocked(): void
+    {
+        $pivot = $this->post->tags->first()->pivot;
+
+        $this->expectException(ImmutableModelViolationException::class);
+        unset($pivot[0]);
+    }
 }
