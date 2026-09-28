@@ -249,6 +249,23 @@ class ReadOnlyConnectionTest extends TestCase
         $this->assertCount(2, ImmutableUser::lockForUpdate()->get());
     }
 
+    /**
+     * Laravel 13 passes Query\Builder::fetchUsing() to select() and cursor()
+     * as a 4th argument. The wrapper must forward it, or rows come back as
+     * objects instead of the requested fetch mode.
+     */
+    public function test_fetch_using_is_forwarded(): void
+    {
+        if (! method_exists(\Illuminate\Database\Query\Builder::class, 'fetchUsing')) {
+            $this->markTestSkipped('Query\Builder::fetchUsing() needs Laravel 13 or later.');
+        }
+
+        $query = fn () => ImmutableUser::query()->toBase()->select('name')->orderBy('id')->fetchUsing(\PDO::FETCH_COLUMN);
+
+        $this->assertSame(['Alice', 'Bob'], $query()->get()->all());
+        $this->assertSame(['Alice', 'Bob'], $query()->cursor()->all());
+    }
+
     public function test_reads_inside_transaction(): void
     {
         $count = DB::transaction(fn () => ImmutablePost::where('user_id', 1)->count());

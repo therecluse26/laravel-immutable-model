@@ -4,11 +4,11 @@
 
 **Package:** `brighten/immutable-model`
 **Namespace:** `Brighten\ImmutableModel`
-**Purpose:** Read-only, immutable Eloquent-compatible models for Laravel 11+
+**Purpose:** Read-only, immutable Eloquent-compatible models for Laravel 11, 12 and 13
 
 This package enforces architectural read/write boundaries by providing models that:
 - Have Eloquent-identical read semantics
-- Make mutation and persistence impossible
+- Make database writes impossible (in-memory changes are allowed)
 - Throw exceptions on any write attempt (no silent failures)
 
 ## Non-Negotiable Rules
@@ -17,8 +17,8 @@ These constraints are absolute and must never be violated:
 
 1. **Extends `Illuminate\Database\Eloquent\Model`** - The package achieves immutability by extending Eloquent and overriding all persistence methods to throw exceptions. This provides automatic read parity while blocking all writes.
 2. **Read semantics identical to Eloquent** - All read operations work exactly like Eloquent (by inheritance)
-3. **All write attempts MUST throw** - No silent failures, every mutation path throws `ImmutableModelViolationException`
-4. **No persistence lifecycle** - All persistence methods (save, update, delete, create, insert, etc.) throw exceptions
+3. **All write attempts MUST throw** - No silent failures, every database write throws `ImmutableModelViolationException`
+4. **No persistence lifecycle** - All persistence methods (save, update, delete, create, touch, etc.) throw exceptions
 
 ## Key Files
 
@@ -27,6 +27,8 @@ These constraints are absolute and must never be violated:
 | `src/ImmutableModel.php` | Abstract base class extending Eloquent\Model with persistence blocked |
 | `src/ReadOnlyConnection.php` | Connection wrapper: the 6 SQL write methods throw, everything else delegates |
 | `src/Concerns/UsesReadOnlyConnection.php` | Trait: `newBaseQueryBuilder()` binds every model query to `ReadOnlyConnection` |
+| `src/Concerns/SerializesDatesNatively.php` | Trait: `serializeDate()` with PHP's native formatter; same output as Eloquent, ~3x faster `toArray()` |
+| `benchmarks/read-benchmark.php` | Standalone Eloquent vs ImmutableModel benchmark on a real database |
 | `src/Relations/ImmutablePivot.php` | Immutable pivot model for BelongsToMany (returned by `ImmutableModel::newPivot()`) |
 | `src/Relations/ImmutableMorphPivot.php` | Immutable pivot model for MorphToMany |
 | `src/Relations/ImmutableMorphToMany.php` | Only overrides `newPivot()`, because Laravel hard-codes `MorphPivot` there |
@@ -44,6 +46,7 @@ The package extends `Eloquent\Model` and enforces immutability through method ov
 // ImmutableModel extends Eloquent\Model
 abstract class ImmutableModel extends Model
 {
+    use SerializesDatesNatively; // Fast toArray() date output, identical to Eloquent
     use UsesReadOnlyConnection;  // Every SQL write throws at the connection
 
     // Override persistence methods to throw
@@ -68,7 +71,7 @@ public function save(array $options = []): never {
 public function update(array $attributes = [], array $options = []): never {
     throw ImmutableModelViolationException::persistenceAttempt('update');
 }
-// ... same for delete, create, insert, forceDelete, restore, etc.
+// ... same for delete, create, forceCreate, push, touch, increment, forceDelete, restore, etc.
 ```
 
 ### Events (disabled via no-op)
@@ -99,13 +102,14 @@ In-memory changes are allowed: `$model->name = 'x'`, `fill()`, `associate()`, `d
 ### Relationships
 - `belongsTo()`, `hasOne()`, `hasMany()`, `hasOneThrough()`, `hasManyThrough()`, `morphOne()`, `morphMany()`, `morphTo()` - plain Eloquent relation classes
 - `belongsToMany()` - plain `BelongsToMany`; pivots are `ImmutablePivot` (via `ImmutableModel::newPivot()`)
-- `morphToMany()`, `morphedByMany()` - `ImmutableMorphToMany`; pivots are `ImmutableMorphPivot`
+- `morphToMany()`, `morphedByMany()` - `ImmutableMorphToMany`; pivots are `ImmutableMorphPivot`. This applies only when the **parent** is immutable: an Eloquent parent gets a plain `MorphPivot` unless the relation adds `->using(ImmutableMorphPivot::class)`
+- `getForeignKey()` removes an `Immutable` class-name prefix (`ImmutableUser` gives `user_id`). This is the one intended difference from Eloquent's defaults
 
 ### Casting
 - Scalar: `int`, `float`, `bool`, `string`
 - Dates: `datetime`, `date`, `timestamp`, `immutable_datetime`, `immutable_date`
 - Complex: `array`, `json`, `collection`, `object`
-- Custom: Classes implementing `CastsAttributes` (only `get()` method called)
+- Custom: Classes implementing `CastsAttributes` (`get()` on read, `set()` on in-memory assignment)
 
 ### Query Methods
 - All standard WHERE clauses
@@ -118,12 +122,12 @@ In-memory changes are allowed: `$model->name = 'x'`, `fill()`, `associate()`, `d
 
 These features are disabled (throw exceptions or return no-op values):
 
-- **Persistence methods** - `save()`, `update()`, `delete()`, `create()`, `insert()`, `upsert()` all throw
+- **Persistence methods** - `save()`, `update()`, `delete()`, `create()`, and builder `insert()`, `upsert()` all throw
 - **Dirty tracking** - `isDirty()` returns false, `getDirty()` returns empty array (no-op, not absent)
 - **Timestamps** - `$timestamps` stays `true` so `created_at`/`updated_at` are read as dates like Eloquent; `touch()` throws
 - **Model events** - All event methods are no-ops (events never fire)
 - **Mass assignment** - `$guarded = []`: `fill()` works in memory, so relation `create()` reaches `save()` and throws `ImmutableModelViolationException`
-- **Mutators** - `setXxxAttribute` methods are not called (no mutation path reaches them)
+- **Mutators** - `setXxxAttribute` and custom cast `set()` run on in-memory assignment, like Eloquent; nothing is written
 
 Note: These methods exist (inherited from Eloquent) but are overridden to be safe.
 
@@ -140,14 +144,23 @@ Note: These methods exist (inherited from Eloquent) but are overridden to be saf
 ```
 Fix the cause of each error. Do not add ignore comments or a baseline.
 
+### Benchmarks
+```bash
+DB_PORT=33062 php benchmarks/read-benchmark.php seed   # once, needs MySQL (see README "Run it yourself")
+DB_PORT=33062 composer bench                           # Eloquent vs ImmutableModel on a real database
+```
+Performance is the main goal of this package. Measure every optimization on a real database with an A/B run before keeping it. SPX and other instrumenting profilers overstate small functions that are called very often (a `getCasts()` cache looked like 12% in SPX and gained nothing).
+
 ### Run Specific Suite
 ```bash
 ./vendor/bin/phpunit --testsuite Unit
+./vendor/bin/phpunit --testsuite Parity
 ./vendor/bin/phpunit --testsuite Benchmarks
 ```
 
 ### Test Structure
-- `tests/Unit/` - All unit tests
+- `tests/Unit/` - Behavior and write-blocking tests
+- `tests/Parity/` - Compare each read behavior with an equivalent Eloquent model (`tests/Models/Eloquent/`)
 - `tests/Benchmarks/` - Performance comparison with Eloquent
 - `tests/Models/` - Test model definitions
 - `tests/database/migrations/` - Test schema
@@ -156,12 +169,12 @@ Fix the cause of each error. Do not add ignore comments or a baseline.
 - Every new feature needs tests for:
   1. Correct positive behavior
   2. Mutation blocking (must throw appropriate exception)
-- Tests run on PHP 8.2, 8.3, 8.4
+- CI runs PHP 8.2 to 8.5 on Laravel 11, 12 and 13 (Laravel 13 needs PHP 8.3+), plus MySQL 8.4 and Postgres 16
 
 ## When Adding Features
 
 1. **Read the spec first** - `immutable-model-spec.md` has detailed requirements
-2. **Maintain immutability** - Every mutation path must throw
+2. **Maintain immutability** - Every database write must throw
 3. **Use correct exceptions:**
    - `ImmutableModelViolationException` - For mutation attempts
    - `ImmutableModelConfigurationException` - For invalid configuration

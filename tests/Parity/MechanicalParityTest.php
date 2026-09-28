@@ -211,20 +211,20 @@ class MechanicalParityTest extends ParityTestCase
     }
 
     // =========================================================================
-    // 1.1 getRawAttribute() / getAttributes()
+    // 1.1 getAttributes()
     // =========================================================================
 
     /**
-     * Test getRawAttribute returns uncast value.
+     * Test a raw attribute from getAttributes() is the uncast value.
      */
-    public function test_get_raw_attribute_returns_uncast_value(): void
+    public function test_raw_attribute_is_uncast_value(): void
     {
         $eloquent = EloquentUser::find(1);
         $immutable = ImmutableUser::find(1);
 
         // Raw settings should be JSON string, not array
         $eloquentRaw = $eloquent->getAttributes()['settings'];
-        $immutableRaw = $immutable->getRawAttribute('settings');
+        $immutableRaw = $immutable->getAttributes()['settings'];
 
         $this->assertIsString($eloquentRaw);
         $this->assertIsString($immutableRaw);

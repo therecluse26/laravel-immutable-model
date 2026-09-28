@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Brighten\ImmutableModel;
 
+use Brighten\ImmutableModel\Concerns\SerializesDatesNatively;
 use Brighten\ImmutableModel\Concerns\UsesReadOnlyConnection;
 use Brighten\ImmutableModel\Exceptions\ImmutableModelConfigurationException;
 use Brighten\ImmutableModel\Exceptions\ImmutableModelViolationException;
@@ -27,6 +28,7 @@ use ReflectionClass;
  */
 abstract class ImmutableModel extends Model
 {
+    use SerializesDatesNatively;
     use UsesReadOnlyConnection;
 
     /**
@@ -55,7 +57,6 @@ abstract class ImmutableModel extends Model
     /**
      * Register observers - disabled for immutable models.
      *
-     * @param object|array<int, object|string>|string $classes
      * @param object|array<int, object|string>|string $classes
      */
     public static function observe($classes): void
@@ -138,7 +139,6 @@ abstract class ImmutableModel extends Model
      *
      * @param string $event
      * @param \Illuminate\Events\QueuedClosure|callable|array<int, mixed>|class-string $callback
-     * @param \Illuminate\Events\QueuedClosure|callable|array<int, mixed>|class-string $callback
      */
     protected static function registerModelEvent($event, $callback): void
     {
@@ -175,7 +175,6 @@ abstract class ImmutableModel extends Model
      *
      * @param array<int, string>|string $attributes
      * @return static
-     * @param array<int, string>|string $attributes
      */
     public function syncOriginalAttributes($attributes)
     {
@@ -195,7 +194,7 @@ abstract class ImmutableModel extends Model
     /**
      * Get dirty attributes - always empty for immutable models.
      *
-     * @return array<string, mixed> mixed>
+     * @return array<string, mixed>
      */
     public function getDirty()
     {
@@ -205,7 +204,7 @@ abstract class ImmutableModel extends Model
     /**
      * Get dirty attributes for update - always empty for immutable models.
      *
-     * @return array<string, mixed> mixed>
+     * @return array<string, mixed>
      */
     protected function getDirtyForUpdate()
     {
@@ -215,7 +214,7 @@ abstract class ImmutableModel extends Model
     /**
      * Get changes - always empty for immutable models.
      *
-     * @return array<string, mixed> mixed>
+     * @return array<string, mixed>
      */
     public function getChanges()
     {
@@ -227,7 +226,6 @@ abstract class ImmutableModel extends Model
      *
      * @param array<int, string>|string|null $attributes
      * @return bool
-     * @param array<int, string>|string|null $attributes
      */
     public function isDirty($attributes = null)
     {
@@ -239,7 +237,6 @@ abstract class ImmutableModel extends Model
      *
      * @param array<int, string>|string|null $attributes
      * @return bool
-     * @param array<int, string>|string|null $attributes
      */
     public function isClean($attributes = null)
     {
@@ -261,7 +258,6 @@ abstract class ImmutableModel extends Model
      *
      * @param array<int, string>|string|null $attributes
      * @return bool
-     * @param array<int, string>|string|null $attributes
      */
     public function wasChanged($attributes = null)
     {
@@ -304,24 +300,11 @@ abstract class ImmutableModel extends Model
         return $key ? ($this->attributes[$key] ?? $default) : $this->attributes;
     }
 
-    /**
-     * Get the raw value of an attribute without casting or mutators.
-     *
-     * @param string $key
-     * @param mixed $default
-     * @return mixed
-     */
-    public function getRawAttribute(string $key, mixed $default = null): mixed
-    {
-        return $this->attributes[$key] ?? $default;
-    }
-
     // =========================================================================
     // PERSISTENCE METHODS - ALL THROW
     // =========================================================================
 
     /**
-     * @param array<string, mixed> $options
      * @param array<string, mixed> $options
      * @throws ImmutableModelViolationException
      */
@@ -332,7 +315,6 @@ abstract class ImmutableModel extends Model
 
     /**
      * @param array<string, mixed> $options
-     * @param array<string, mixed> $options
      * @throws ImmutableModelViolationException
      */
     public function saveQuietly(array $options = []): never
@@ -342,7 +324,6 @@ abstract class ImmutableModel extends Model
 
     /**
      * @param array<string, mixed> $options
-     * @param array<string, mixed> $options
      * @throws ImmutableModelViolationException
      */
     public function saveOrFail(array $options = []): never
@@ -351,8 +332,6 @@ abstract class ImmutableModel extends Model
     }
 
     /**
-     * @param array<string, mixed> $attributes
-     * @param array<string, mixed> $options
      * @param array<string, mixed> $attributes
      * @param array<string, mixed> $options
      * @throws ImmutableModelViolationException
@@ -365,8 +344,6 @@ abstract class ImmutableModel extends Model
     /**
      * @param array<string, mixed> $attributes
      * @param array<string, mixed> $options
-     * @param array<string, mixed> $attributes
-     * @param array<string, mixed> $options
      * @throws ImmutableModelViolationException
      */
     public function updateQuietly(array $attributes = [], array $options = []): never
@@ -375,8 +352,6 @@ abstract class ImmutableModel extends Model
     }
 
     /**
-     * @param array<string, mixed> $attributes
-     * @param array<string, mixed> $options
      * @param array<string, mixed> $attributes
      * @param array<string, mixed> $options
      * @throws ImmutableModelViolationException
@@ -464,7 +439,6 @@ abstract class ImmutableModel extends Model
 
     /**
      * @param array<string, mixed> $attributes
-     * @param array<string, mixed> $attributes
      * @throws ImmutableModelViolationException
      */
     public static function create(array $attributes = []): never
@@ -474,14 +448,12 @@ abstract class ImmutableModel extends Model
 
     /**
      * @param array<string, mixed> $attributes
-     * @param array<string, mixed> $attributes
      * @throws ImmutableModelViolationException
      */
     public static function forceCreate(array $attributes): never
     {
         throw ImmutableModelViolationException::persistenceAttempt('forceCreate');
     }
-
 
     /**
      * @throws ImmutableModelViolationException
@@ -519,7 +491,6 @@ abstract class ImmutableModel extends Model
 
     /**
      * @param array<string, mixed> $extra
-     * @param array<string, mixed> $extra
      * @throws ImmutableModelViolationException
      */
     public function increment($column, $amount = 1, array $extra = []): never
@@ -528,7 +499,6 @@ abstract class ImmutableModel extends Model
     }
 
     /**
-     * @param array<string, mixed> $extra
      * @param array<string, mixed> $extra
      * @throws ImmutableModelViolationException
      */
@@ -539,7 +509,6 @@ abstract class ImmutableModel extends Model
 
     /**
      * @param array<string, mixed> $extra
-     * @param array<string, mixed> $extra
      * @throws ImmutableModelViolationException
      */
     public function incrementQuietly($column, $amount = 1, array $extra = []): never
@@ -548,7 +517,6 @@ abstract class ImmutableModel extends Model
     }
 
     /**
-     * @param array<string, mixed> $extra
      * @param array<string, mixed> $extra
      * @throws ImmutableModelViolationException
      */
@@ -577,7 +545,6 @@ abstract class ImmutableModel extends Model
      * @param string|null $using
      * @return \Illuminate\Database\Eloquent\Relations\Pivot
      *
-     * @param array<string, mixed> $attributes
      * @throws ImmutableModelConfigurationException
      */
     public function newPivot(Model $parent, array $attributes, $table, $exists, $using = null)
@@ -694,7 +661,6 @@ abstract class ImmutableModel extends Model
      * @param array<string, mixed>|object $attributes
      * @param string|null $connection
      * @return static
-     * @param array<string, mixed>|object $attributes
      */
     public function newFromBuilder($attributes = [], $connection = null)
     {
@@ -752,7 +718,6 @@ abstract class ImmutableModel extends Model
      *
      * @param array<string, mixed>|object $row
      * @return static
-     * @param array<string, mixed>|object $row
      */
     public static function fromRow(array|object $row): static
     {
@@ -767,8 +732,7 @@ abstract class ImmutableModel extends Model
      * Create a collection of model instances from raw database rows.
      *
      * @param array<int, array<string, mixed>|object> $rows
-     * @return \Illuminate\Database\Eloquent\Collection<int, static> static>
-     * @param array<int, array<string, mixed>|object> $rows
+     * @return \Illuminate\Database\Eloquent\Collection<int, static>
      */
     public static function fromRows(array $rows): \Illuminate\Database\Eloquent\Collection
     {

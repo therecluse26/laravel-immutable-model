@@ -264,6 +264,22 @@ class MorphToManyRelationshipTest extends TestCase
         $pivot['tag_id'] = 5;
     }
 
+    public function test_morph_pivot_integer_offset_mutation_blocked(): void
+    {
+        $pivot = $this->post->morphTags->first()->pivot;
+
+        $this->expectException(ImmutableModelViolationException::class);
+        $pivot[0] = 5;
+    }
+
+    public function test_morph_pivot_integer_offset_unset_blocked(): void
+    {
+        $pivot = $this->post->morphTags->first()->pivot;
+
+        $this->expectException(ImmutableModelViolationException::class);
+        unset($pivot[0]);
+    }
+
     // =========================================================================
     // Multiple Morph Types Tests
     // =========================================================================

@@ -138,8 +138,8 @@ class HydrationTest extends TestCase
     {
         $user = ImmutableUser::find(1);
 
-        $this->assertEquals('John Doe', $user->getRawAttribute('name'));
-        $this->assertEquals('john@example.com', $user->getRawAttribute('email'));
+        $this->assertEquals('John Doe', $user->getAttributes()['name']);
+        $this->assertEquals('john@example.com', $user->getAttributes()['email']);
     }
 
     public function test_get_attributes_returns_all_raw_attributes(): void

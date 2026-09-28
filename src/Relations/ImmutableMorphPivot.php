@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Brighten\ImmutableModel\Relations;
 
+use Brighten\ImmutableModel\Concerns\SerializesDatesNatively;
 use Brighten\ImmutableModel\Concerns\UsesReadOnlyConnection;
 use Brighten\ImmutableModel\Exceptions\ImmutableModelViolationException;
 use Illuminate\Database\Eloquent\Relations\MorphPivot;
@@ -16,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\MorphPivot;
  */
 class ImmutableMorphPivot extends MorphPivot
 {
+    use SerializesDatesNatively;
     use UsesReadOnlyConnection;
 
     /**
@@ -59,7 +61,7 @@ class ImmutableMorphPivot extends MorphPivot
      */
     public function offsetSet($offset, $value): void
     {
-        throw ImmutableModelViolationException::attributeMutation($offset ?? 'unknown');
+        throw ImmutableModelViolationException::attributeMutation((string) ($offset ?? 'unknown'));
     }
 
     /**
@@ -69,6 +71,6 @@ class ImmutableMorphPivot extends MorphPivot
      */
     public function offsetUnset($offset): void
     {
-        throw ImmutableModelViolationException::attributeMutation($offset);
+        throw ImmutableModelViolationException::attributeMutation((string) $offset);
     }
 }
