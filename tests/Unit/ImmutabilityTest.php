@@ -71,7 +71,7 @@ class ImmutabilityTest extends TestCase
 
         unset($user->name);
 
-        $this->assertNull($user->getRawAttribute('name'));
+        $this->assertArrayNotHasKey('name', $user->getAttributes());
     }
 
     public function test_unsetting_attribute_via_array_access_works(): void
@@ -80,7 +80,7 @@ class ImmutabilityTest extends TestCase
 
         unset($user['name']);
 
-        $this->assertNull($user->getRawAttribute('name'));
+        $this->assertArrayNotHasKey('name', $user->getAttributes());
     }
 
     public function test_can_add_computed_attributes(): void

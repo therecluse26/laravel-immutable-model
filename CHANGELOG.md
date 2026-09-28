@@ -25,6 +25,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ### Removed
 
 - `ImmutableEloquentBuilder`
+- `ImmutableModel::getRawAttribute()`. It is not an Eloquent method. Use `getAttributes()[$key]`, as in Eloquent.
 - `ImmutableBelongsTo`, `ImmutableBelongsToMany`, `ImmutableHasMany`, `ImmutableHasManyThrough`, `ImmutableHasOne`, `ImmutableHasOneThrough`, `ImmutableMorphMany`, `ImmutableMorphOne`, `ImmutableMorphTo`
 - Exception factories that nothing threw: `missingPrimaryKey()`, `forbiddenProperty()`, `invalidCast()`, `missingTable()`, `missingConnectionResolver()`, `relationMutation()`, `collectionMutation()`, `directInstantiation()`
 
@@ -40,7 +41,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 2. Change `ImmutableEloquentBuilder` type hints to `Illuminate\Database\Eloquent\Builder`.
 3. If you catch exceptions from a removed factory method, catch `ImmutableModelViolationException` or `ImmutableModelConfigurationException` instead.
 4. If a relation uses a custom pivot with `using()`, make the pivot class extend `ImmutablePivot` (or `ImmutableMorphPivot` for `morphToMany()`).
-5. If you relied on `fresh()`, `refresh()` or `replicate()` throwing, note that they now work.
+5. Replace `$model->getRawAttribute('name')` with `$model->getAttributes()['name']`.
+6. If you relied on `fresh()`, `refresh()` or `replicate()` throwing, note that they now work.
 
 ## [0.12.2] and earlier
 

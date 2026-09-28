@@ -300,18 +300,6 @@ abstract class ImmutableModel extends Model
         return $key ? ($this->attributes[$key] ?? $default) : $this->attributes;
     }
 
-    /**
-     * Get the raw value of an attribute without casting or mutators.
-     *
-     * @param string $key
-     * @param mixed $default
-     * @return mixed
-     */
-    public function getRawAttribute(string $key, mixed $default = null): mixed
-    {
-        return $this->attributes[$key] ?? $default;
-    }
-
     // =========================================================================
     // PERSISTENCE METHODS - ALL THROW
     // =========================================================================
