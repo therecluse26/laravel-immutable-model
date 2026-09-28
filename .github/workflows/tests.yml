@@ -33,6 +33,11 @@ jobs:
 
       - name: Install dependencies
         run: |
+          # Every laravel/framework 11.x release has a security advisory, and
+          # Composer blocks those by default. Testbench needs laravel/framework,
+          # so allow it for the Laravel 11 jobs only. Users are not affected:
+          # this package requires illuminate/database, which is not blocked.
+          if [ "${{ matrix.laravel }}" = "11" ]; then composer config policy.advisories.block false; fi
           composer require "illuminate/database:^${{ matrix.laravel }}.0" "illuminate/support:^${{ matrix.laravel }}.0" --no-interaction --no-update
           composer update --prefer-dist --no-progress
 
@@ -77,6 +82,11 @@ jobs:
 
       - name: Install dependencies
         run: |
+          # Every laravel/framework 11.x release has a security advisory, and
+          # Composer blocks those by default. Testbench needs laravel/framework,
+          # so allow it for the Laravel 11 jobs only. Users are not affected:
+          # this package requires illuminate/database, which is not blocked.
+          if [ "${{ matrix.laravel }}" = "11" ]; then composer config policy.advisories.block false; fi
           composer require "illuminate/database:^${{ matrix.laravel }}.0" "illuminate/support:^${{ matrix.laravel }}.0" --no-interaction --no-update
           composer update --prefer-dist --no-progress
 
@@ -111,6 +121,11 @@ jobs:
 
       - name: Install dependencies
         run: |
+          # Every laravel/framework 11.x release has a security advisory, and
+          # Composer blocks those by default. Testbench needs laravel/framework,
+          # so allow it for the Laravel 11 jobs only. Users are not affected:
+          # this package requires illuminate/database, which is not blocked.
+          if [ "${{ matrix.laravel }}" = "11" ]; then composer config policy.advisories.block false; fi
           composer require "illuminate/database:^${{ matrix.laravel }}.0" "illuminate/support:^${{ matrix.laravel }}.0" --no-interaction --no-update
           composer update --prefer-dist --no-progress
 
