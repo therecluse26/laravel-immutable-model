@@ -9,6 +9,7 @@ use Brighten\ImmutableModel\Tests\Models\ImmutableComment;
 use Brighten\ImmutableModel\Tests\Models\ImmutablePost;
 use Brighten\ImmutableModel\Tests\Models\ImmutableProfile;
 use Brighten\ImmutableModel\Tests\Models\ImmutableUser;
+use Brighten\ImmutableModel\Tests\Models\ScopedModel;
 use Brighten\ImmutableModel\Tests\TestCase;
 
 class RelationshipTest extends TestCase
@@ -312,5 +313,26 @@ class RelationshipTest extends TestCase
         $posts = $user->getRelation('posts');
 
         $this->assertInstanceOf(EloquentCollection::class, $posts);
+    }
+
+    // =========================================================================
+    // DEFAULT FOREIGN KEYS
+    // =========================================================================
+
+    public function test_foreign_key_drops_immutable_prefix(): void
+    {
+        $this->assertSame('user_id', (new ImmutableUser())->getForeignKey());
+    }
+
+    public function test_foreign_key_without_prefix_matches_eloquent(): void
+    {
+        $this->assertSame('scoped_model_id', (new ScopedModel())->getForeignKey());
+    }
+
+    public function test_has_many_default_foreign_key_drops_immutable_prefix(): void
+    {
+        $relation = (new ImmutableUser())->hasMany(ImmutablePost::class);
+
+        $this->assertSame('user_id', $relation->getForeignKeyName());
     }
 }
