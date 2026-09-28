@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace Brighten\ImmutableModel\Tests\Unit;
 
 use Brighten\ImmutableModel\Exceptions\ImmutableModelViolationException;
+use Brighten\ImmutableModel\Relations\ImmutableMorphPivot;
+use Brighten\ImmutableModel\Relations\ImmutablePivot;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Brighten\ImmutableModel\Tests\Models\ImmutablePost;
 use Brighten\ImmutableModel\Tests\Models\ImmutableUser;
 use Brighten\ImmutableModel\Tests\Models\Mutable\Category;
+use Brighten\ImmutableModel\Tests\Models\Mutable\Post;
 use Brighten\ImmutableModel\Tests\Models\Mutable\PostMeta;
 use Brighten\ImmutableModel\Tests\Models\Mutable\UserSettings;
 use Brighten\ImmutableModel\Tests\TestCase;
@@ -504,6 +507,58 @@ class MutableRelationshipTest extends TestCase
         // Verify change persisted
         $freshCategory = Category::find(1);
         $this->assertEquals('Saved Category', $freshCategory->name);
+    }
+
+    // =========================================================================
+    // INVERSE DIRECTION: Pivots Between a Mutable Parent and ImmutableModels
+    // =========================================================================
+
+    public function test_mutable_parent_belongs_to_many_pivot_is_immutable(): void
+    {
+        $this->seedPivots();
+        $tag = Post::findOrFail(1)->immutableTags->first();
+
+        $this->assertInstanceOf(ImmutablePivot::class, $tag->pivot);
+        $this->assertPivotWriteBlocked('post_tag', fn () => $tag->pivot->delete());
+    }
+
+    public function test_mutable_parent_belongs_to_many_attach_is_blocked(): void
+    {
+        $this->seedPivots();
+
+        $this->assertPivotWriteBlocked('post_tag', fn () => Post::findOrFail(1)->immutableTags()->attach(2));
+    }
+
+    public function test_mutable_parent_morph_to_many_pivot_is_immutable_with_using(): void
+    {
+        $this->seedPivots();
+        $tag = Post::findOrFail(1)->immutableMorphTags->first();
+
+        $this->assertInstanceOf(ImmutableMorphPivot::class, $tag->pivot);
+        $this->assertPivotWriteBlocked('taggables', fn () => $tag->pivot->delete());
+    }
+
+    private function seedPivots(): void
+    {
+        $this->app['db']->table('tags')->insert([
+            ['id' => 1, 'name' => 'PHP'],
+            ['id' => 2, 'name' => 'Laravel'],
+        ]);
+        $this->app['db']->table('post_tag')->insert(['post_id' => 1, 'tag_id' => 1]);
+        $this->app['db']->table('taggables')->insert(['tag_id' => 1, 'taggable_type' => Post::class, 'taggable_id' => 1]);
+    }
+
+    private function assertPivotWriteBlocked(string $table, callable $write): void
+    {
+        $before = $this->app['db']->table($table)->get()->map(fn ($row) => (array) $row)->all();
+
+        try {
+            $write();
+            $this->fail('Expected ImmutableModelViolationException, but no exception was thrown.');
+        } catch (ImmutableModelViolationException) {
+            $after = $this->app['db']->table($table)->get()->map(fn ($row) => (array) $row)->all();
+            $this->assertSame($before, $after, 'The pivot table changed before the write was blocked.');
+        }
     }
 
     // =========================================================================
